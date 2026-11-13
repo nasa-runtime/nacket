@@ -1,0 +1,73 @@
+application:
+  name: "nacket"
+  mode: "service"
+  startup_timeout_ms: 45000
+  shutdown_timeout_ms: 15000
+log:
+  level: "${NACKET_LOG_LEVEL:info}"
+  path: "${NACKET_LOG_PATH:/usr/local/logs/${application.name}}"
+  color: false
+server:
+  enabled: true
+  host: "0.0.0.0"
+  port: 3031
+  health: true
+  request_body_limit_bytes: 262144
+  max_inflight_requests: 32
+  request_deadline_ms: 2000
+ws:
+  enabled: true
+  addr: "0.0.0.0:3030"
+  multiplex: true
+  auth_timeout_ms: 5000
+  heartbeat_timeout_ms: 60000
+config_watch:
+  enabled: true
+redis:
+  enabled: false
+kafka:
+  enabled: false
+nacos:
+  enabled: true
+  server_addr: "${NACKET_NACOS_ADDRESS:nacos:8848}"
+  namespace: ""
+  group: "NACKET"
+  app_name: "nacket"
+  username: "${NACKET_NACOS_USER}"
+  password: "${NACKET_NACOS_PASSWORD}"
+  imports:
+    -
+      data_id: "nacket-routes.yml"
+      optional: false
+      file_extension: "yml"
+discovery:
+  enabled: false
+grafana:
+  observability:
+    enabled: false
+nacket:
+  nodeId: "node-a"
+  clusterId: "cluster-a"
+  scopeEpoch: "1"
+  routeLedger: "data/routes.json"
+  readiness:
+    policy: "runtime"
+  routes: []
+  endpoints:
+    business:
+      target:
+        mode: "direct"
+        clientRef: "business"
+        url: "${NACKET_BUSINESS_URL:http://service-a:8080/socket/authorize}"
+      timeoutMs: 2000
+      maxResponseBytes: 32768
+      maxIdentityTtlMs: 300000
+      call:
+        method: "POST"
+        serviceTokenSecretRef: "NACKET_BUSINESS_TOKEN"
+        maxInFlight: 32
+rest_clients:
+  business:
+    enabled: true
+    provider: "external"
+    timeout_ms: 3000

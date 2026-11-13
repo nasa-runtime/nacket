@@ -1,0 +1,382 @@
+{
+  "groups": [
+    {
+      "name": "nacket",
+      "interval": "30s",
+      "rules": [
+        {
+          "alert": "NacketRouteProtected",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((nacket_runtime_state{service_name=\"nacket\",state=\"routes_protected\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0",
+          "for": "30s",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "路由处于保护状态",
+            "summary_en": "Routes remain protected"
+          }
+        },
+        {
+          "alert": "NacketRequiredSourceUnavailable",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((nacket_runtime_state{service_name=\"nacket\",state=\"dependencies_unavailable\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0",
+          "for": "30s",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "必要消息来源不可用",
+            "summary_en": "Required message sources are unavailable"
+          }
+        },
+        {
+          "alert": "NacketConnectionPressure",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((nacket_live_resources{service_name=\"nacket\",resource=\"physical_connections\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((nacket_runtime_state{service_name=\"nacket\",state=\"physical_connection_capacity\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.8",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "物理连接容量超过 80%",
+            "summary_en": "Physical connection capacity exceeds 80%"
+          }
+        },
+        {
+          "alert": "NacketOutboundPressure",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((nacket_live_resources{service_name=\"nacket\",resource=~\"outbox_bytes|writing_bytes\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((nacket_runtime_state{service_name=\"nacket\",state=\"outbound_byte_capacity\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.8",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "出站逻辑字节容量超过 80%",
+            "summary_en": "Outbound logical byte capacity exceeds 80%"
+          }
+        },
+        {
+          "alert": "NacketPendingAgeUnknown",
+          "expr": "nacket_pending_age_complete{service_name=\"nacket\"} == 0",
+          "for": "1m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "待决年龄观察容量不足，不能判断最旧等待",
+            "summary_en": "Pending age coverage is incomplete; the oldest wait is unknown"
+          }
+        },
+        {
+          "alert": "NacketPendingWorkStalled",
+          "expr": "nacket_oldest_pending_age_seconds{service_name=\"nacket\",resource=~\"outbox_items|writing_items|control_pending|initialization_requests|authorization_commands\"} > 30",
+          "for": "1m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "本地待决责任持续超过三十秒",
+            "summary_en": "Local pending work remains older than thirty seconds"
+          }
+        },
+        {
+          "alert": "NacketControlConvergenceSlow",
+          "expr": "nacket_control_oldest_operation_age_seconds{service_name=\"nacket\"} > 60",
+          "for": "2m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "已受理控制操作尚未完成全局屏障",
+            "summary_en": "An accepted control operation has not completed its global barrier"
+          }
+        },
+        {
+          "alert": "NacketControlAuthorityUnavailable",
+          "expr": "sum by (deployment_environment,cluster,service_name) ((nacket_control_authority_fresh{service_name=\"nacket\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) == 0",
+          "for": "30s",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "集群没有新鲜控制权威观察",
+            "summary_en": "The cluster has no fresh control authority observation"
+          }
+        },
+        {
+          "alert": "NacketControlAuthorityAmbiguous",
+          "expr": "sum by (deployment_environment,cluster,service_name) ((nacket_control_authority_fresh{service_name=\"nacket\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 1",
+          "for": "30s",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "存在多份控制权威观察，集群目录不作汇总",
+            "summary_en": "Multiple control authority observations prevent directory aggregation"
+          }
+        },
+        {
+          "alert": "NacketBrokerObservationUnavailable",
+          "expr": "nacket_broker_observation_fresh{service_name=\"nacket\"} == 0",
+          "for": "2m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "已启用的 MQ 位置观察缺少新鲜完整证据",
+            "summary_en": "Enabled MQ position observation lacks fresh complete evidence"
+          }
+        },
+        {
+          "alert": "NacketBrokerBacklog",
+          "expr": "nacket_broker_unread_positions{service_name=\"nacket\"} > 1000",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "MQ 未读位置距离持续超过阈值",
+            "summary_en": "MQ unread position distance remains above the threshold"
+          }
+        },
+        {
+          "alert": "NacketRedisPendingIdle",
+          "expr": "nacket_broker_pending_max_idle_seconds{service_name=\"nacket\"} > 30",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "Redis 待确认记录的认领后空闲时间持续偏高",
+            "summary_en": "Redis pending records have prolonged idle time since claim"
+          }
+        },
+        {
+          "alert": "NacketCpuPressure",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (rate(napp_cgroup_cpu_microseconds_total{service_name=\"nacket\",mode=\"total\"}[5m])) / 1000000 / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_cgroup_cpu_limit_cores{service_name=\"nacket\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.85",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "有限 CPU 配额使用率超过 85%",
+            "summary_en": "Finite CPU quota utilization exceeds 85%"
+          }
+        },
+        {
+          "alert": "NacketCpuThrottled",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(napp_cgroup_cpu_periods_total{service_name=\"nacket\",kind=\"throttled\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(napp_cgroup_cpu_periods_total{service_name=\"nacket\",kind=\"total\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.2",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "CPU 节流周期比例超过 20%",
+            "summary_en": "CPU throttled period ratio exceeds 20%"
+          }
+        },
+        {
+          "alert": "NacketMemoryPressure",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_cgroup_memory_bytes{service_name=\"nacket\",kind=\"current\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_cgroup_memory_bytes{service_name=\"nacket\",kind=\"limit\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.85",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "容器内存使用率超过 85%",
+            "summary_en": "Cgroup memory utilization exceeds 85%"
+          }
+        },
+        {
+          "alert": "NacketMemoryCritical",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_cgroup_memory_bytes{service_name=\"nacket\",kind=\"current\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_cgroup_memory_bytes{service_name=\"nacket\",kind=\"limit\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.95",
+          "for": "1m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "容器内存使用率超过 95%",
+            "summary_en": "Cgroup memory utilization exceeds 95%"
+          }
+        },
+        {
+          "alert": "NacketFileDescriptorsPressure",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_process_fds{service_name=\"nacket\",kind=\"open\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_process_fds{service_name=\"nacket\",kind=\"soft_limit\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.85",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "文件描述符使用率超过 85%",
+            "summary_en": "File descriptors utilization exceeds 85%"
+          }
+        },
+        {
+          "alert": "NacketFileDescriptorsCritical",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_process_fds{service_name=\"nacket\",kind=\"open\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / (sum by (deployment_environment,cluster,service_name,service_instance_id) ((napp_process_fds{service_name=\"nacket\",kind=\"soft_limit\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0) > 0.95",
+          "for": "1m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "文件描述符使用率超过 95%",
+            "summary_en": "File descriptors utilization exceeds 95%"
+          }
+        },
+        {
+          "alert": "NacketDiskLow",
+          "expr": "napp_filesystem_bytes{service_name=\"nacket\",kind=\"available\"} / ignoring(kind) (napp_filesystem_bytes{service_name=\"nacket\",kind=\"size\"} > 0) < 0.15",
+          "for": "10m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "文件系统可用资源不足 15%",
+            "summary_en": "Filesystem available capacity is below 15%"
+          }
+        },
+        {
+          "alert": "NacketDiskCritical",
+          "expr": "napp_filesystem_bytes{service_name=\"nacket\",kind=\"available\"} / ignoring(kind) (napp_filesystem_bytes{service_name=\"nacket\",kind=\"size\"} > 0) < 0.05",
+          "for": "1m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "文件系统可用资源不足 5%",
+            "summary_en": "Filesystem available capacity is below 5%"
+          }
+        },
+        {
+          "alert": "NacketInodesLow",
+          "expr": "napp_filesystem_inodes{service_name=\"nacket\",kind=\"available\"} / ignoring(kind) (napp_filesystem_inodes{service_name=\"nacket\",kind=\"size\"} > 0) < 0.15",
+          "for": "10m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "文件系统可用资源不足 15%",
+            "summary_en": "Filesystem available capacity is below 15%"
+          }
+        },
+        {
+          "alert": "NacketInodesCritical",
+          "expr": "napp_filesystem_inodes{service_name=\"nacket\",kind=\"available\"} / ignoring(kind) (napp_filesystem_inodes{service_name=\"nacket\",kind=\"size\"} > 0) < 0.05",
+          "for": "1m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "文件系统可用资源不足 5%",
+            "summary_en": "Filesystem available capacity is below 5%"
+          }
+        },
+        {
+          "alert": "NacketOomKilled",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(napp_cgroup_memory_events_total{service_name=\"nacket\",kind=\"oom_kill\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0",
+          "for": "0s",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "可见容器发生 OOM 终止",
+            "summary_en": "An OOM kill occurred in the visible cgroup"
+          }
+        },
+        {
+          "alert": "NacketRestartRequired",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) ((nacket_runtime_state{service_name=\"nacket\",state=\"configuration_pending_restart\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0",
+          "for": "30m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "配置变更仍等待重启",
+            "summary_en": "Configuration changes still require a restart"
+          }
+        },
+        {
+          "alert": "NacketCollectorUnavailable",
+          "expr": "napp_resource_collection_available{service_name=\"nacket\"} == 0",
+          "for": "1m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "采集来源没有有效样本",
+            "summary_en": "A resource collector has no valid samples"
+          }
+        },
+        {
+          "alert": "NacketIdentityCollision",
+          "expr": "count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) > 1",
+          "for": "1m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "监控实例身份重复，聚合已排除该实例",
+            "summary_en": "Duplicate monitoring identities are excluded from aggregation"
+          }
+        },
+        {
+          "alert": "NacketRemoteFailure",
+          "expr": "(sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_scope_events_total{service_name=\"nacket\",kind=\"endpoint\",outcome=~\"timeout|unavailable|unknown\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_scope_events_total{service_name=\"nacket\",kind=\"endpoint\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0.05) and (sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_scope_events_total{service_name=\"nacket\",kind=\"endpoint\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) >= 100)",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "调用或投递失败比例超过阈值",
+            "summary_en": "Call or delivery failure ratio exceeds the threshold"
+          }
+        },
+        {
+          "alert": "NacketWriteFailure",
+          "expr": "(sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_deliveries_total{service_name=\"nacket\",stage=\"written\",outcome=\"unavailable\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_deliveries_total{service_name=\"nacket\",stage=\"written\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0.01) and (sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_deliveries_total{service_name=\"nacket\",stage=\"written\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) >= 100)",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "调用或投递失败比例超过阈值",
+            "summary_en": "Call or delivery failure ratio exceeds the threshold"
+          }
+        },
+        {
+          "alert": "NacketReceiptExpiry",
+          "expr": "(sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_receipt_events_total{service_name=\"nacket\",outcome=\"expired\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) / sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_receipt_events_total{service_name=\"nacket\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) > 0.01) and (sum by (deployment_environment,cluster,service_name,service_instance_id) ((increase(nacket_receipt_events_total{service_name=\"nacket\"}[5m])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{service_name=\"nacket\"} and on (job,instance) (up == 0)))) >= 100)",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "调用或投递失败比例超过阈值",
+            "summary_en": "Call or delivery failure ratio exceeds the threshold"
+          }
+        },
+        {
+          "alert": "NacketExpectedInstanceMissing",
+          "expr": "((max by (deployment_environment,cluster,service_name,service_instance_id) (platform_expected_instance_info{service_name=\"nacket\"} == 1)) unless on (deployment_environment,cluster,service_name,service_instance_id) (max by (deployment_environment,cluster,service_name,service_instance_id) (last_over_time(napp_observability_heartbeat_unixtime_seconds{service_name=\"nacket\"}[5m])))) or ((time() - (max by (deployment_environment,cluster,service_name,service_instance_id) (last_over_time(napp_observability_heartbeat_unixtime_seconds{service_name=\"nacket\"}[5m]))) > 120) and on (deployment_environment,cluster,service_name,service_instance_id) (max by (deployment_environment,cluster,service_name,service_instance_id) (platform_expected_instance_info{service_name=\"nacket\"} == 1)))",
+          "for": "2m",
+          "labels": {
+            "severity": "critical"
+          },
+          "annotations": {
+            "summary": "平台期望实例没有有效心跳",
+            "summary_en": "A platform-expected instance has no valid heartbeat"
+          }
+        },
+        {
+          "alert": "NacketExpectedInventoryMissing",
+          "expr": "absent_over_time(platform_expected_instance_info{service_name=\"nacket\"}[5m])",
+          "for": "2m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "缺少平台期望实例来源，不能判断丢失节点",
+            "summary_en": "Expected-instance inventory is absent; missing nodes cannot be determined"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+services:
+  nacket:
+    image: ${NACKET_IMAGE:-nacket:1.0.0}
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 25s
+    environment:
+      NACKET_LOG_PATH: /usr/local/logs/nacket
+      NACKET_LOG_LEVEL: info
+    ports:
+      - "127.0.0.1:3030:3030"
+      - "127.0.0.1:3031:3031"
+    volumes:
+      - data:/app/data
+      - logs:/usr/local/logs/nacket
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  data:
+  logs:

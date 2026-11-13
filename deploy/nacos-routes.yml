@@ -1,0 +1,43 @@
+nacket:
+  routes:
+    -
+      routeId: "route-a"
+      revision: 1
+      enabled: true
+      serialization: "JSON_BYTES"
+      access:
+        listenerRef: "shared"
+        endpoint: "/route-a"
+        native:
+          enabled: true
+      identity:
+        mode: "remote_http"
+        endpointRef: "business"
+      originCheck:
+        allowMissing: false
+        allowedOrigins:
+          - "https://app.example.com"
+      servicePush:
+        enabled: false
+      subscriptions:
+        enabled: true
+        authorization:
+          mode: "remote_http"
+          endpointRef: "business"
+      receiving:
+        direct:
+          enabled: false
+      schemas:
+        schema-a:
+          schemaId: "schema-a"
+          fields:
+            -
+              tag: 1
+              name: "value"
+              type:
+                kind: "string"
+              maxBytes: 65536
+      events:
+        event-a:
+          schema: "schema-a"
+          maxBytes: 65536

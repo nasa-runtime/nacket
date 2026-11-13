@@ -1,0 +1,4345 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Deployment",
+  "description": "产品部署正文；来源、连接池和监控出口由 napp 的同一配置树管理。",
+  "type": "object",
+  "properties": {
+    "connectionLogging": {
+      "description": "已接受配置中的会话日志开关，热更影响既有连接的后续事件。",
+      "$ref": "#/$defs/ConnectionLogging",
+      "default": {
+        "connected": true,
+        "disconnected": true
+      }
+    },
+    "control": {
+      "description": "本地或集群控制权威配置，决定路由定义及许可的持久来源。",
+      "$ref": "#/$defs/Control",
+      "default": {
+        "mode": "local"
+      }
+    },
+    "management": {
+      "description": "独立管理入口的开关、身份和网络范围，不向业务客户端授予管理权。",
+      "$ref": "#/$defs/Management"
+    },
+    "routeProvisioning": {
+      "description": "配置清单提案策略，关闭不会删除权威账本中已有的路由。",
+      "$ref": "#/$defs/Provisioning",
+      "default": {
+        "enabled": false,
+        "sourceId": null,
+        "generation": null,
+        "entries": []
+      }
+    },
+    "readiness": {
+      "description": "节点就绪判定策略，可额外要求指定路由全部可接流。",
+      "$ref": "#/$defs/Readiness",
+      "default": {
+        "policy": "runtime"
+      }
+    },
+    "metricScopes": {
+      "description": "启动固定的详细监控名称目录，变更后必须重启才能重新预留系列容量。",
+      "$ref": "#/$defs/MetricScopes"
+    },
+    "brokerMetrics": {
+      "description": "固定 MQ 来源的独立只读积压采样，关闭时不创建观测请求。",
+      "$ref": "#/$defs/BrokerMetrics"
+    },
+    "sessionMetrics": {
+      "description": "会话业务活跃状态与订阅目标的分批观察，不参与权限决定。",
+      "$ref": "#/$defs/SessionMetrics"
+    },
+    "nodeId": {
+      "description": "部署选择的稳定节点标识；同一控制作用域内不可由多个活跃实例共享。",
+      "type": "string"
+    },
+    "routeLedger": {
+      "description": "本地持久基线文件路径，其数据卷和锁随实际提交任务保留。",
+      "type": "string"
+    },
+    "clusterId": {
+      "description": "集群隔离身份，参与路由、授权与消息上下文绑定。",
+      "type": "string",
+      "default": "nacket"
+    },
+    "scopeEpoch": {
+      "description": "控制作用域的十进制代际，用于隔离不同持久基线下的旧消息与许可。",
+      "type": "string",
+      "default": "1"
+    },
+    "transport": {
+      "description": "接入适配器、握手心跳和节点传输容量策略，全部业务端口共用硬上限。",
+      "$ref": "#/$defs/Transport",
+      "default": {
+        "uidEvents": {
+          "partitions": 32,
+          "queueCapacity": 256,
+          "maxInflight": 8192,
+          "timeoutMs": 1000,
+          "maxPerUid": 128,
+          "maxBytesPerUid": 8388608,
+          "maxBytes": 268435456,
+          "controlReserve": 16
+        },
+        "admission": {
+          "maxPhysicalConnections": 100000,
+          "maxUnauthenticated": 256,
+          "maxConnectionsPerPeer": 10000,
+          "connectionsPerSecondPerPeer": 1024,
+          "maxTrackedPeers": 16384
+        },
+        "nativeTcp": true,
+        "nativeWebsocket": true,
+        "socketio": false,
+        "nativePath": "/nacket",
+        "socketioPath": "/socket.io/",
+        "maxFrameBytes": 1048576,
+        "maxMetadataBytes": 65536,
+        "assemblyTimeoutMs": 30000,
+        "writeTimeoutMs": 5000,
+        "heartbeatIntervalMs": 15000,
+        "heartbeatTimeoutMs": 10000,
+        "maxNamespaces": 8,
+        "maxSessions": 100000,
+        "maxPendingOperations": 4096,
+        "maxOutboundBytes": 268435456,
+        "maxControlOutboundBytes": 8388608,
+        "maxInboundBytes": 268435456,
+        "maxRequestRecords": 65536,
+        "maxRequestCacheBytes": 67108864
+      }
+    },
+    "remoteCalls": {
+      "description": "全节点远程请求数量和构造字节预算，不被单端点并发配置绕过。",
+      "$ref": "#/$defs/RemoteCalls",
+      "default": {
+        "maxInFlight": 256,
+        "maxBytes": 268435456,
+        "maxRequestBytes": 1048576,
+        "maxRefreshInFlight": 32,
+        "maxRefreshPending": 256,
+        "maxContextBytes": 67108864,
+        "maxAuthorizationCacheEntries": 4096,
+        "maxAuthorizationCacheBytes": 16777216
+      }
+    },
+    "routes": {
+      "description": "当前配置提供的路由候选；集群模式仍需权威提交与旧许可屏障。",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RouteDefinition"
+      },
+      "default": []
+    },
+    "endpoints": {
+      "description": "允许业务流程引用的固定远程端点，客户端不能在此目录外指定目标。",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/RemoteEndpoint"
+      },
+      "default": {}
+    },
+    "verifiers": {
+      "description": "本地 JWT 和受信网关断言使用的部署验证器目录。",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Verifier"
+      },
+      "default": {}
+    },
+    "ingresses": {
+      "description": "受信 MQ 消费入口及用途、来源身份和恢复语义，不能由消息自行创建。",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Ingress"
+      },
+      "default": {}
+    },
+    "ingressProcessing": {
+      "description": "MQ 读前保留、异步处理和扇出的节点共享容量。",
+      "$ref": "#/$defs/IngressProcessing",
+      "default": {
+        "maxPendingRecords": 256,
+        "maxKeyPendingRecords": 64,
+        "maxRetryAgeMs": 60000,
+        "maxRetainedBytes": 67108864,
+        "maxReadBytes": 134217728,
+        "maxControlReadBytes": 8388608,
+        "maxIsolationBytes": 67108864,
+        "maxParallelFanouts": 4,
+        "maxCandidateReferences": 1000000,
+        "fanoutBatchSize": 256
+      }
+    },
+    "publishers": {
+      "description": "固定 MQ 发布入口，区分业务、初始化、连接事实与回执等用途。",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Publisher"
+      },
+      "default": {}
+    },
+    "lifecycleDelivery": {
+      "description": "连接事实与待决初始化的独立并发、数量、字节和退避预算。",
+      "$ref": "#/$defs/LifecycleDelivery",
+      "default": {
+        "workers": 16,
+        "maxPending": 1024,
+        "maxBytes": 8388608,
+        "maxEventBytes": 16384,
+        "maxAttempts": 1,
+        "retryBackoffMs": 100,
+        "maxPendingInitializations": 128,
+        "maxInitializationBytes": 8388608
+      }
+    },
+    "primaryListener": {
+      "description": "主业务监听的模板引用，与 napp 已绑定地址核对后使用。",
+      "type": "string",
+      "default": "shared"
+    },
+    "listeners": {
+      "description": "受权监听模板及独立端口范围；自动端口通过实际 bind 取得。",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ListenerTemplate"
+      },
+      "default": {}
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "nodeId",
+    "routeLedger"
+  ],
+  "$defs": {
+    "ConnectionLogging": {
+      "description": "节点会话日志策略，与业务生命周期回调及 nalog 输出目标分别控制。",
+      "type": "object",
+      "properties": {
+        "connected": {
+          "description": "是否记录首次 Ready 的连接成功日志，关闭不影响认证或上线通知。",
+          "type": "boolean",
+          "default": true
+        },
+        "disconnected": {
+          "description": "是否记录首次关闭的断连日志，关闭仍须取消全部订阅并释放会话责任。",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Control": {
+      "description": "本地运行与集群权威互斥；控制来源和身份在进程运行期间固定。",
+      "oneOf": [
+        {
+          "description": "仅管理当前节点的定义与会话，不提供集群持久权威。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "local"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "description": "以同槽原子提交维护 Redis 控制账本与输入水位。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "redis"
+            },
+            "sourceRef": {
+              "description": "控制后端的固定受管来源引用，业务入口不能动态替换权威连接。",
+              "type": "string"
+            },
+            "namespace": {
+              "description": "该后端内的控制资源命名空间，用于隔离不同部署的持久账本。",
+              "type": "string"
+            },
+            "initialize": {
+              "description": "是否允许具备资格的节点首次建立空基线；已观察权威的数据卷不得重新初始化丢失状态。",
+              "type": "boolean",
+              "default": false
+            },
+            "settings": {
+              "description": "控制身份、许可期限、续期和屏障完成策略。",
+              "$ref": "#/$defs/Settings"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "sourceRef",
+            "namespace",
+            "settings"
+          ]
+        },
+        {
+          "description": "以 Kafka 事务提交控制账本，恢复只采纳已提交快照。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "kafka"
+            },
+            "sourceRef": {
+              "description": "控制后端的固定受管来源引用，业务入口不能动态替换权威连接。",
+              "type": "string"
+            },
+            "namespace": {
+              "description": "该后端内的控制资源命名空间，用于隔离不同部署的持久账本。",
+              "type": "string"
+            },
+            "brokerClusterId": {
+              "description": "部署固定的 Kafka 集群身份，恢复时核对实际 broker，避免接入其它集群。",
+              "type": "string"
+            },
+            "commandTopic": {
+              "description": "Kafka 持久控制命令主题，与业务数据主题分开。",
+              "type": "string"
+            },
+            "stateTopic": {
+              "description": "Kafka 控制快照及回复的事务状态主题，恢复使用已提交记录。",
+              "type": "string"
+            },
+            "initialize": {
+              "description": "是否允许具备资格的节点首次建立空基线；已观察权威的数据卷不得重新初始化丢失状态。",
+              "type": "boolean",
+              "default": false
+            },
+            "settings": {
+              "description": "控制身份、许可期限、续期和屏障完成策略。",
+              "$ref": "#/$defs/Settings"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "sourceRef",
+            "namespace",
+            "brokerClusterId",
+            "commandTopic",
+            "stateTopic",
+            "settings"
+          ]
+        }
+      ]
+    },
+    "Settings": {
+      "description": "集群控制的身份、有限许可及完成条件，签名与有效期必须同时满足。",
+      "type": "object",
+      "properties": {
+        "role": {
+          "description": "本进程承担控制器、接入或组合职责，不通过运行期路由配置改变角色。",
+          "$ref": "#/$defs/Role",
+          "default": "combined"
+        },
+        "nodeKeyId": {
+          "description": "本节点签署控制请求的密钥 ID，必须对应部署允许的节点主体。",
+          "type": "string"
+        },
+        "keys": {
+          "description": "允许验证控制签名的有限密钥目录及各密钥的主体权限。",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Key"
+          }
+        },
+        "provisionerKeyId": {
+          "description": "配置清单提案使用的管理员密钥 ID，未声明时不能隐式取得提案权限。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "permitTtlMs": {
+          "description": "路由控制许可的最长有效毫秒数，续期必须取得新的权威证据。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 15000
+        },
+        "renewIntervalMs": {
+          "description": "节点主动续期的间隔毫秒数，不能通过心跳直接延长现有许可。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        },
+        "requestTimeoutMs": {
+          "description": "一次控制请求及关联回复等待的毫秒预算，超时不表示提交未发生。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 1500
+        },
+        "clockMarginMs": {
+          "description": "跨节点期限核对预留的时钟误差毫秒数，参与合法失效证据计算。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 250
+        },
+        "expiryCompletion": {
+          "description": "仅在部署能保证时钟误差与检查至 I/O 的最长不可中断窗口时启用，缺省只接受精确排空证明。",
+          "type": "boolean",
+          "default": false
+        },
+        "writeBudgetMs": {
+          "description": "同时覆盖写出终止和检查至实际 I/O 的调度、暂停上界；不能用普通网络超时替代该保证。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        },
+        "minimumReadyNodes": {
+          "description": "新定义完成上线操作所需的最少 Ready 节点数，准备成功不等于已接流。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "nodeKeyId",
+        "keys"
+      ]
+    },
+    "Role": {
+      "description": "进程启动时固定的职责，不能由业务路由临时提升权限。",
+      "oneOf": [
+        {
+          "description": "同时运行控制处理和客户端接入。",
+          "type": "string",
+          "const": "combined"
+        },
+        {
+          "description": "只处理持久控制，不接入业务客户端。",
+          "type": "string",
+          "const": "controller"
+        },
+        {
+          "description": "只承担业务接入，控制权威由集群控制器提供。",
+          "type": "string",
+          "const": "socket"
+        }
+      ]
+    },
+    "Key": {
+      "description": "控制密钥与允许主体的绑定，密钥本身不授予目录外权限。",
+      "type": "object",
+      "properties": {
+        "secretRef": {
+          "description": "控制签名材料的 secret 引用，密钥 ID 本身不包含秘密。",
+          "type": "string"
+        },
+        "principal": {
+          "description": "该密钥允许代表的节点或管理员主体，签名有效不能越过此范围。",
+          "$ref": "#/$defs/Principal"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "secretRef",
+        "principal"
+      ]
+    },
+    "Principal": {
+      "description": "控制签名可代表的部署身份，节点责任与管理权限分离。",
+      "oneOf": [
+        {
+          "description": "仅代表指定节点，启动代际由持久登记进一步限定。",
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "const": "node"
+            },
+            "nodeId": {
+              "description": "节点密钥唯一绑定的稳定节点标识，不能冒用其它节点请求。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "nodeId"
+          ]
+        },
+        {
+          "description": "在固定路由集合内提出管理动作，不取得节点接流身份。",
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string",
+              "const": "administrator"
+            },
+            "subject": {
+              "description": "管理员主体标识，用于持久操作归属与授权关联。",
+              "type": "string"
+            },
+            "routes": {
+              "description": "该管理员可操作的路由范围，签名不能扩大到目录外路由。",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "role",
+            "subject",
+            "routes"
+          ]
+        }
+      ]
+    },
+    "Management": {
+      "description": "管理身份与节点控制身份分开；网络允许列表只核对真实 TCP 对端。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否安装受权管理 HTTP 入口；关闭时不提供路由写操作。",
+          "type": "boolean",
+          "default": false
+        },
+        "allowedPeers": {
+          "description": "允许访问管理入口的真实网络来源，不能用客户端 header 绕过。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "ip"
+          },
+          "default": []
+        },
+        "identities": {
+          "description": "固定管理身份目录，先验证身份与网络再解析和执行管理正文。",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Identity"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Identity": {
+      "description": "管理 HTTP 凭据与控制主体的绑定，只读限制在提交任何变更前生效。",
+      "type": "object",
+      "properties": {
+        "tokenSecretRef": {
+          "description": "当前管理身份的 Bearer 凭据引用，不与业务认证或监控读取凭据混用。",
+          "type": "string"
+        },
+        "controlKeyId": {
+          "description": "该管理身份关联的控制签名主体，路由范围由控制密钥权限决定。",
+          "type": "string"
+        },
+        "readOnly": {
+          "description": "是否只允许 GET；开启时在读取写操作正文和提交控制请求前拒绝变更。",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tokenSecretRef",
+        "controlKeyId"
+      ]
+    },
+    "Provisioning": {
+      "description": "YAML 仅在明确启用清单来源时提案；关闭开关不会删除、恢复或转移任何持久路由。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否把本次配置作为集群路由清单提案，关闭不撤销已提交路由。",
+          "type": "boolean",
+          "default": false
+        },
+        "sourceId": {
+          "description": "清单归属来源标识，权威按来源维护配置所有权。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "generation": {
+          "description": "该来源的单调十进制清单代次，旧代不能覆盖已接受的更新。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "entries": {
+          "description": "本次清单的路由及预期旧 revision；权威逐项检查归属与并发条件。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entry"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "Entry": {
+      "description": "条目引用同一完整配置里的路由定义，CAS 必须由发布者明确声明。",
+      "type": "object",
+      "properties": {
+        "routeId": {
+          "description": "当前清单条目对应的路由 ID，必须在完整候选定义中存在。",
+          "type": "string"
+        },
+        "expectedRevision": {
+          "description": "提交前要求权威仍持有的十进制 revision，冲突时拒绝覆盖。",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "routeId",
+        "expectedRevision"
+      ]
+    },
+    "Readiness": {
+      "description": "就绪策略与动态路由目录分离，空目录可以继续提供管理能力。",
+      "oneOf": [
+        {
+          "description": "以运行依赖就绪为条件，允许暂时没有在线业务路由。",
+          "type": "object",
+          "properties": {
+            "policy": {
+              "type": "string",
+              "const": "runtime"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "policy"
+          ]
+        },
+        {
+          "description": "运行依赖就绪之外，还要求指定路由全部满足服务条件。",
+          "type": "object",
+          "properties": {
+            "policy": {
+              "type": "string",
+              "const": "required_routes"
+            },
+            "routeIds": {
+              "description": "除了运行环境可用，还必须全部在线且许可有效的固定路由集合。",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "policy",
+            "routeIds"
+          ]
+        }
+      ]
+    },
+    "MetricScopes": {
+      "description": "详细指标只使用启动时固定的受权名称，目录不随客户端或动态路由扩张。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否登记固定名称的详细指标来源；默认关闭，不影响节点总量及业务权限。",
+          "type": "boolean",
+          "default": false
+        },
+        "routeIds": {
+          "description": "启动时允许细分的路由 ID，最多三十二个；其它路由汇总到 _other。",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "endpointRefs": {
+          "description": "启动时允许细分的远程端点引用，最多三十二个，不使用 URL 作为标签。",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "ingressRefs": {
+          "description": "启动时允许细分的受信 MQ 入口引用，最多三十二个；目录改变需要重启。",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "BrokerMetrics": {
+      "description": "broker 位置采样与业务消费独立，关闭时不增加观测网络请求。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否启用固定来源的只读积压采样，不改变消费或业务准入资格。",
+          "type": "boolean",
+          "default": false
+        },
+        "intervalMs": {
+          "description": "同一来源两次采样之间的最短间隔，单位毫秒。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        },
+        "timeoutMs": {
+          "description": "单轮采样全部请求共用的最大时长，单位毫秒。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 1000
+        },
+        "staleAfterMs": {
+          "description": "成功样本允许展示的最大年龄，单位毫秒；失败立即停止展示旧数量。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 15000
+        },
+        "maxInFlight": {
+          "description": "节点允许同时执行的采样任务数，容量不足直接报告未知，不堆积等待。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "SessionMetrics": {
+      "description": "会话观察采用有界分批扫描，采样不能改变任何授权与投递结论。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否采样有效会话的业务活跃状态与本节点订阅目标。",
+          "type": "boolean",
+          "default": true
+        },
+        "activityWindowMs": {
+          "description": "距离最近成功业务动作或完整业务写出的活跃窗口，单位毫秒。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 60000
+        },
+        "intervalMs": {
+          "description": "两批采样之间的最小间隔，单位毫秒。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 100
+        },
+        "batchSize": {
+          "description": "每批最多访问的会话数；每个会话仍受订阅容量上限约束。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "maxTargets": {
+          "description": "一轮采样允许保留的不同路由、租户、订阅目标组合数。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 65536
+        },
+        "maxTargetBytes": {
+          "description": "目标目录的保守字节预算，不保存正文或 UID。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 16777216
+        },
+        "maxCycleMs": {
+          "description": "一轮扫描的最大跨度，超过后报告未知而不发布部分总量。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 120000
+        }
+      },
+      "additionalProperties": false
+    },
+    "Transport": {
+      "description": "全局接入只允许固定 profile，路由仍须分别显式开放 native 或 Socket.IO。",
+      "type": "object",
+      "properties": {
+        "uidEvents": {
+          "description": "可信主体的固定分区事件预算，所有业务端口和外部协议共用。",
+          "$ref": "#/$defs/UidEvents",
+          "default": {
+            "partitions": 32,
+            "queueCapacity": 256,
+            "maxInflight": 8192,
+            "timeoutMs": 1000,
+            "maxPerUid": 128,
+            "maxBytesPerUid": 8388608,
+            "maxBytes": 268435456,
+            "controlReserve": 16
+          }
+        },
+        "admission": {
+          "description": "全部业务端口共享的物理接入准入与真实来源限制。",
+          "$ref": "#/$defs/AdmissionPolicy",
+          "default": {
+            "maxPhysicalConnections": 100000,
+            "maxUnauthenticated": 256,
+            "maxConnectionsPerPeer": 10000,
+            "connectionsPerSecondPerPeer": 1024,
+            "maxTrackedPeers": 16384
+          }
+        },
+        "nativeTcp": {
+          "description": "是否接纳原生 TCP 接入；关闭不自动打开其它适配器。",
+          "type": "boolean",
+          "default": true
+        },
+        "nativeWebsocket": {
+          "description": "是否接纳原生 WebSocket 接入，仍受路由能力限制。",
+          "type": "boolean",
+          "default": true
+        },
+        "socketio": {
+          "description": "是否接纳 Socket.IO 兼容入口，路由还需单独启用该能力。",
+          "type": "boolean",
+          "default": false
+        },
+        "nativePath": {
+          "description": "原生 WebSocket 升级路径，用于在物理入口选择适配器。",
+          "type": "string",
+          "default": "/nacket"
+        },
+        "socketioPath": {
+          "description": "Engine.IO WebSocket 升级路径，与业务 namespace 分开。",
+          "type": "string",
+          "default": "/socket.io/"
+        },
+        "maxFrameBytes": {
+          "description": "单个完整原生帧及协议组装的字节上限，超过时拒绝继续处理。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1048576
+        },
+        "maxMetadataBytes": {
+          "description": "固定控制区最大字节数，业务正文不能借 metadata 绕过容量。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 65536
+        },
+        "assemblyTimeoutMs": {
+          "description": "完整消息或附件的总组装预算，单位毫秒；碎片到达不刷新起点。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 30000
+        },
+        "writeTimeoutMs": {
+          "description": "单次写出最长等待毫秒数，同时不能超过消息和权限的原始截止点。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        },
+        "heartbeatIntervalMs": {
+          "description": "业务心跳间隔，单位毫秒；不与底层 WS 控制帧重复计算。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 15000
+        },
+        "heartbeatTimeoutMs": {
+          "description": "已发送业务心跳等待有效响应的毫秒预算，逾期关闭连接。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 10000
+        },
+        "maxNamespaces": {
+          "description": "一条 Socket.IO 物理连接允许同时登记的 namespace 数量上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8
+        },
+        "maxSessions": {
+          "description": "节点逻辑会话容量，Socket.IO 每个 namespace 独立占用一份。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 100000
+        },
+        "maxPendingOperations": {
+          "description": "节点客户端操作在途数上限，跨连接共用，队列不能无限增长。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 4096
+        },
+        "maxOutboundBytes": {
+          "description": "节点业务出站逻辑字节预算，排队和 writer 持有阶段都计费。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 268435456
+        },
+        "maxControlOutboundBytes": {
+          "description": "节点独立控制输出字节预算，握手和状态通知不与业务正文争用。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8388608
+        },
+        "maxInboundBytes": {
+          "description": "节点共享的原生及附件接收保留预算，Bytes 最后 owner 释放后归还。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 268435456
+        },
+        "maxRequestRecords": {
+          "description": "节点请求关联记录容量，防止幂等标识耗尽内存。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 65536
+        },
+        "maxRequestCacheBytes": {
+          "description": "节点请求结果正文缓存字节预算，不包含业务历史补发能力。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 67108864
+        }
+      },
+      "additionalProperties": false
+    },
+    "UidEvents": {
+      "description": "同一可信主体的本地保序事件预算，路由和连接尝试不改变顺序域。",
+      "type": "object",
+      "properties": {
+        "partitions": {
+          "description": "节点固定分区数，必须为二的幂，不能随用户数量创建执行域。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 32
+        },
+        "queueCapacity": {
+          "description": "同一原始分区中统一事件类型的排队上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        },
+        "maxInflight": {
+          "description": "节点排队与执行中的事件总数上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8192
+        },
+        "timeoutMs": {
+          "description": "单个本地事件从接纳起算的最长等待毫秒数，不能延长业务期限。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 1000
+        },
+        "maxPerUid": {
+          "description": "同一可信主体跨全部路由与连接的本地待决事件上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "maxBytesPerUid": {
+          "description": "单个主体排队事件持有的逻辑字节预算，正文共享引用仍计算保留量。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8388608
+        },
+        "maxBytes": {
+          "description": "节点排队事件持有的逻辑字节预算，与传输实际字节预算同时生效。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 268435456
+        },
+        "controlReserve": {
+          "description": "为完成、取消和关闭保留的事件数量，仍保持相同严格类型与提交顺序。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 16
+        }
+      },
+      "additionalProperties": false
+    },
+    "AdmissionPolicy": {
+      "description": "节点硬上限在所有业务 listener 间共享，路由附加配额开关不能取消这些边界。",
+      "type": "object",
+      "properties": {
+        "maxPhysicalConnections": {
+          "description": "跨共享及独立业务端口的物理连接硬上限，实际 I/O owner 全部退出后归还。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 100000
+        },
+        "maxUnauthenticated": {
+          "description": "节点尚未完成首个会话 Ready 的物理连接数量上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        },
+        "maxConnectionsPerPeer": {
+          "description": "同一真实 TCP 对端的并存连接上限，不使用可伪造代理头作为来源。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 10000
+        },
+        "connectionsPerSecondPerPeer": {
+          "description": "真实来源在一秒窗口内可接纳的连接次数上限。",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0,
+          "default": 1024
+        },
+        "maxTrackedPeers": {
+          "description": "准入目录最多保留的真实来源数量，满容量时拒绝新来源登记。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 16384
+        }
+      },
+      "additionalProperties": false
+    },
+    "RemoteCalls": {
+      "description": "所有业务 HTTP 与公钥读取共用的节点硬上限，单端点并发限制仍独立生效。",
+      "type": "object",
+      "properties": {
+        "maxInFlight": {
+          "description": "节点同时持有的远程调用数上限，包含等待单端点容量的任务。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        },
+        "maxBytes": {
+          "description": "所有远程调用共享的请求构造和响应临时空间保守预算，单位字节。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 268435456
+        },
+        "maxRequestBytes": {
+          "description": "单次 JSON 请求序列化的最大字节数，分配正文前先做长度检查。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1048576
+        },
+        "maxRefreshInFlight": {
+          "description": "主动刷新最多同时执行的请求数，仍占用统一远程调用总预算。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 32
+        },
+        "maxRefreshPending": {
+          "description": "主动刷新等待队列的最大会话数，满容量按原授权期限退避。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        },
+        "maxContextBytes": {
+          "description": "已建立或待确认会话保留的握手上下文总字节预算，独立于临时 HTTP 请求缓冲。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 67108864
+        },
+        "maxAuthorizationCacheEntries": {
+          "description": "所有会话共享的只读授权缓存条目上限，待决合并责任也占用额度。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 4096
+        },
+        "maxAuthorizationCacheBytes": {
+          "description": "全节点授权缓存的保守保留字节上限，不与临时 HTTP 缓冲混用。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 16777216
+        }
+      },
+      "additionalProperties": false
+    },
+    "RouteDefinition": {
+      "description": "完整路由期望；运行状态与节点分配端口不进入此结构。",
+      "type": "object",
+      "properties": {
+        "routeId": {
+          "description": "路由稳定标识，控制、消息、授权和监听绑定共同使用。",
+          "type": "string"
+        },
+        "revision": {
+          "description": "本定义单调递增的 revision，相同 revision 的不同内容必须拒绝。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "activation": {
+          "description": "本路由独立的上线门槛，缺省沿用部署设置，旧定义屏障仍必须完成。",
+          "$ref": "#/$defs/Activation"
+        },
+        "handshake": {
+          "description": "转交固定 HTTP 端点的受限握手字段，不授予身份或业务权限。",
+          "$ref": "#/$defs/HandshakePolicy"
+        },
+        "enabled": {
+          "description": "期望是否上线，实际开放还需持久提交、旧许可屏障和依赖准备。",
+          "type": "boolean",
+          "default": false
+        },
+        "serialization": {
+          "description": "业务选择的唯一 ProtocolBytes 模式，各接入协议与 MQ 正文必须一致。",
+          "$ref": "#/$defs/Serialization"
+        },
+        "access": {
+          "description": "共享或独立监听、逻辑入口与适配器能力声明。",
+          "$ref": "#/$defs/Access"
+        },
+        "identity": {
+          "description": "建立真实主体的唯一身份策略，关闭远程验证不能隐式匿名放行。",
+          "$ref": "#/$defs/Identity2"
+        },
+        "clientMessages": {
+          "description": "默认关闭的客户端发送策略，显式开启仍必须经业务服务授权。",
+          "$ref": "#/$defs/ClientMessages",
+          "default": {
+            "enabled": false,
+            "execution": null,
+            "endpointRef": null,
+            "publisherRef": null,
+            "allowedEvents": [],
+            "allowedTargets": [],
+            "maxRequestBytes": 65536,
+            "payloadAccess": "raw_body"
+          }
+        },
+        "notifications": {
+          "description": "白名单服务器操作能力，不提供通用客户端广播器。",
+          "$ref": "#/$defs/Notifications",
+          "default": {
+            "enabled": false,
+            "operations": []
+          }
+        },
+        "subscriptions": {
+          "description": "当前连接的群读取申请与恢复策略，不改变业务成员关系。",
+          "$ref": "#/$defs/Subscriptions",
+          "default": {
+            "enabled": false,
+            "groupIdFormat": "utf8",
+            "authorization": null,
+            "initial": {
+              "mode": "none"
+            },
+            "restore": {
+              "enabled": true
+            },
+            "maxPerSession": 128,
+            "maxPerRequest": 32,
+            "maxGrantTtlMs": 60000
+          }
+        },
+        "schemas": {
+          "description": "业务提供的有限 schema 描述，不能覆盖内置订阅对象。",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Descriptor"
+          },
+          "default": {}
+        },
+        "events": {
+          "description": "允许的事件、schema、正文容量及明确状态覆盖语义。",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/EventDefinition"
+          },
+          "default": {}
+        },
+        "connectAuthorization": {
+          "description": "身份建立后可选的额外连接业务授权，失败不保留部分准入。",
+          "$ref": "#/$defs/RemotePolicy",
+          "default": {
+            "enabled": false,
+            "endpointRef": null
+          }
+        },
+        "authorization": {
+          "description": "身份刷新与持久业务撤权策略，刷新不能绕过已有撤权下界。",
+          "$ref": "#/$defs/Authorization",
+          "default": {
+            "refresh": {
+              "enabled": false,
+              "endpointRef": null
+            },
+            "control": {
+              "enabled": false,
+              "ingressRef": null,
+              "producers": {}
+            }
+          }
+        },
+        "originCheck": {
+          "description": "浏览器来源检查策略，与真实身份校验独立执行。",
+          "$ref": "#/$defs/OriginCheck",
+          "default": {
+            "enabled": true,
+            "allowedOrigins": [],
+            "allowMissing": false
+          }
+        },
+        "connections": {
+          "description": "路由连接配额、同用户策略、操作速率和请求关联预算。",
+          "$ref": "#/$defs/Connections",
+          "default": {
+            "limitEnabled": true,
+            "scope": "node",
+            "sameUserPolicy": "allow_multiple",
+            "maxConnections": 10000,
+            "maxPerUid": 8,
+            "maxPendingOperations": 8,
+            "operationsPerSecond": 32,
+            "requests": {
+              "maxRecords": 256,
+              "maxBytes": 1048576,
+              "retentionMs": 30000
+            }
+          }
+        },
+        "servicePush": {
+          "description": "受信业务下行入口及生产者、目标和正文检查策略。",
+          "$ref": "#/$defs/ServicePush",
+          "default": {
+            "enabled": true,
+            "ingressRef": null,
+            "allowedProducers": [],
+            "allowedTargets": [
+              "group",
+              "uids"
+            ],
+            "validateBody": false
+          }
+        },
+        "receiving": {
+          "description": "定向与群读取通道开关，接收能力独立于客户端发送能力。",
+          "$ref": "#/$defs/Receiving",
+          "default": {
+            "direct": {
+              "enabled": true
+            },
+            "group": {
+              "enabled": true
+            }
+          }
+        },
+        "delivery": {
+          "description": "消息期限、回执、去重、慢消费者与逻辑队列容量。",
+          "$ref": "#/$defs/Delivery",
+          "default": {
+            "mode": "realtime",
+            "maxTtlMs": 60000,
+            "futureSkewMs": 2000,
+            "clientAck": {
+              "enabled": false,
+              "level": null,
+              "timeoutMs": 10000,
+              "maxPending": 128
+            },
+            "deduplication": {
+              "enabled": true
+            },
+            "slowConsumer": "disconnect",
+            "maxQueueMessages": 128,
+            "maxQueueBytes": 1048576
+          }
+        },
+        "lifecycle": {
+          "description": "初始化及连接上下线事实的固定业务交互策略。",
+          "$ref": "#/$defs/Lifecycle",
+          "default": {
+            "initialization": {
+              "enabled": false,
+              "required": true,
+              "target": null,
+              "timeoutMs": 5000,
+              "reply": null
+            },
+            "online": {
+              "enabled": false,
+              "target": null,
+              "timeoutMs": 5000
+            },
+            "offline": {
+              "enabled": false,
+              "target": null,
+              "timeoutMs": 5000
+            }
+          }
+        },
+        "compatibility": {
+          "description": "显式旧事件和路径兼容声明，不允许降低身份或订阅授权要求。",
+          "$ref": "#/$defs/Compatibility",
+          "default": {
+            "joinLeaveAliases": false,
+            "legacyPath": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "routeId",
+        "revision",
+        "serialization",
+        "access",
+        "identity"
+      ]
+    },
+    "Activation": {
+      "description": "路由激活门槛随定义冻结，省略时继承部署默认值。",
+      "type": "object",
+      "properties": {
+        "minReadyNodes": {
+          "description": "上线至少需要的 Ready 节点数；空值继承部署配置，不代表零节点即可上线。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0,
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "HandshakePolicy": {
+      "description": "路由明确允许转交的字段与单值上限，空目录不接受附加认证字段。",
+      "type": "object",
+      "properties": {
+        "authFields": {
+          "description": "AUTH authData 中允许的标量属性及其最大 JSON 字节数，最多十六项。",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "default": {}
+        },
+        "headers": {
+          "description": "允许转交的小写 HTTP header 名及最大值字节数，不包含身份凭据或代理来源头。",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "Serialization": {
+      "description": "业务选择的唯一序列化模式，禁止客户端协商覆盖。",
+      "oneOf": [
+        {
+          "description": "使用 ProtocolBytes JSON 字节模式，字段合同仍由固定 schema 决定。",
+          "type": "string",
+          "const": "JSON_BYTES"
+        },
+        {
+          "description": "使用 ProtocolBytes 变长整数 TLV 模式。",
+          "type": "string",
+          "const": "VARINT_TLV"
+        },
+        {
+          "description": "使用 ProtocolBytes 位打包 TLV 模式。",
+          "type": "string",
+          "const": "BITPACK_TLV"
+        },
+        {
+          "description": "使用 ProtocolBytes 固定布局模式，发送接收必须共享同一描述符。",
+          "type": "string",
+          "const": "FAST_FIXED"
+        }
+      ]
+    },
+    "Access": {
+      "description": "业务接入映射与部署监听模板绑定。",
+      "type": "object",
+      "properties": {
+        "listenerRef": {
+          "description": "当前路由使用的受权监听模板引用，决定地址、协议和独立端口边界。",
+          "type": "string"
+        },
+        "endpoint": {
+          "description": "通用逻辑接入路径，原生 endpoint 或 Socket.IO namespace 未覆盖时继承。",
+          "type": "string",
+          "default": ""
+        },
+        "dedicatedPort": {
+          "description": "路由独立端口开关及可选固定端口，不能占用管理或监控端口。",
+          "$ref": "#/$defs/DedicatedPort",
+          "default": {
+            "enabled": false,
+            "port": null
+          }
+        },
+        "native": {
+          "description": "原生适配器入口开关、逻辑 endpoint 和固定帧承载合同。",
+          "$ref": "#/$defs/NativeAccess",
+          "default": {
+            "enabled": false,
+            "endpoint": null,
+            "wireProfile": "split_envelope"
+          }
+        },
+        "socketio": {
+          "description": "Socket.IO 兼容入口开关、namespace 和正文承载合同。",
+          "$ref": "#/$defs/SocketioAccess",
+          "default": {
+            "enabled": false,
+            "namespace": null,
+            "wireLayout": "binary_attachment"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "listenerRef"
+      ]
+    },
+    "DedicatedPort": {
+      "description": "独立端口只在显式开启后分配；None 表示按部署范围递增绑定。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "路由是否申请独立业务端口，关闭时使用受权模板的共享监听。",
+          "type": "boolean",
+          "default": false
+        },
+        "port": {
+          "description": "可选固定独立端口；开启且未指定时仅在部署批准范围内实际 bind 搜索。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "NativeAccess": {
+      "description": "原生业务 endpoint 与固定 wire profile，不因 Socket.IO 开关改变编码。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否允许本路由原生 TCP/WS 接入，物理监听协议开关仍同时生效。",
+          "type": "boolean",
+          "default": false
+        },
+        "endpoint": {
+          "description": "可选原生逻辑接入路径，缺省使用公共 access.endpoint。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "wireProfile": {
+          "description": "明确的原生外层帧合同，不改变路由 ProtocolBytes 正文模式。",
+          "type": "string",
+          "default": "split_envelope"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SocketioAccess": {
+      "description": "Socket.IO namespace 只是外部映射，业务体固定使用二进制附件。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否允许本路由通过 Socket.IO namespace 接入，默认不因此启用其它能力。",
+          "type": "boolean",
+          "default": false
+        },
+        "namespace": {
+          "description": "可选标准 namespace，缺省使用 access.endpoint，不能凭任意 path 猜测路由。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "wireLayout": {
+          "description": "明确的 Socket.IO 控制头与二进制附件布局，不以错误结果临时降级。",
+          "type": "string",
+          "default": "binary_attachment"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Identity2": {
+      "description": "路由身份来源，由远程授权、本地验签、可信网关或显式匿名策略建立身份。",
+      "oneOf": [
+        {
+          "description": "不提供身份建立能力；不能以关闭认证为由接受客户端自报 UID。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "disabled"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "description": "从固定业务接口取得身份，明确允许还须通过关联和有效期校验。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "remote_http"
+            },
+            "endpointRef": {
+              "description": "远程身份验证使用的固定业务端点引用，客户端不能指定目标。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "endpointRef"
+          ]
+        },
+        {
+          "description": "按部署验签策略建立主体，不读取客户端任意公钥地址。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "local_jwt"
+            },
+            "verifierRef": {
+              "description": "本地 JWT 或网关断言使用的固定验签器引用。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "verifierRef"
+          ]
+        },
+        {
+          "description": "仅接受可信网络对端提供的已验签一次性断言。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "trusted_gateway"
+            },
+            "verifierRef": {
+              "description": "本地 JWT 或网关断言使用的固定验签器引用。",
+              "type": "string"
+            },
+            "assertionHeader": {
+              "description": "允许读取网关签名断言的单一 header 名，重复值直接拒绝。",
+              "type": "string"
+            },
+            "trustedPeers": {
+              "description": "允许提供网关断言的真实 TCP 来源集合，单有 header 不代表可信代理。",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "format": "ip"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "verifierRef",
+            "assertionHeader",
+            "trustedPeers"
+          ]
+        },
+        {
+          "description": "显式公共路由由服务端创建有限期匿名身份，仍保证 UID 非空。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "anonymous"
+            },
+            "tenantId": {
+              "description": "显式公共匿名路由所属的固定租户，匿名客户端不能自选租户。",
+              "type": "string"
+            },
+            "publicRoute": {
+              "description": "部署对匿名入口为公共能力的明确确认，未确认不能上线匿名路由。",
+              "type": "boolean"
+            },
+            "ttlMs": {
+              "description": "匿名会话身份的有限存活毫秒数，活动和心跳不能延长。",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "tenantId",
+            "publicRoute",
+            "ttlMs"
+          ]
+        }
+      ]
+    },
+    "ClientMessages": {
+      "description": "客户端发送只是业务请求入口，不授予任何本地 Dispatcher 访问能力。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否接受客户端 msg，默认关闭，不能直接在本节点广播。",
+          "type": "boolean",
+          "default": false
+        },
+        "execution": {
+          "description": "开启后选择业务命令或授权后发布，两条路径都以业务 REST 为权限入口。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MessageExecution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "endpointRef": {
+          "description": "处理命令或签发发布许可的固定业务端点。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "publisherRef": {
+          "description": "授权后发布使用的固定受信发布器引用，业务命令路径不隐式发布。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "allowedEvents": {
+          "description": "允许客户端申请发送的有限事件集合，成员读取资格不能扩张此集合。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "allowedTargets": {
+          "description": "允许申请的目标类型集合，业务服务仍需校验并收窄实际对象。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/TargetKind"
+          },
+          "default": []
+        },
+        "maxRequestBytes": {
+          "description": "客户端发送正文的最大字节数，最终还受事件和传输容量限制。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 65536
+        },
+        "payloadAccess": {
+          "description": "业务接口接收原始正文、JSON 转换或仅 metadata 的固定方式。",
+          "$ref": "#/$defs/PayloadAccess",
+          "default": "raw_body"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MessageExecution": {
+      "description": "业务发送路径二选一，均须经过业务 REST 权限校验。",
+      "oneOf": [
+        {
+          "description": "业务 REST 接口校验并执行业务命令，后续下行由受信 MQ 独立进入。",
+          "type": "string",
+          "const": "business_command"
+        },
+        {
+          "description": "业务 REST 接口签发固定发布许可，节点复验后提交指定发布器。",
+          "type": "string",
+          "const": "authorize_then_publish"
+        }
+      ]
+    },
+    "TargetKind": {
+      "description": "可授权目标类别；广播只对受信服务开放。",
+      "oneOf": [
+        {
+          "description": "单个订阅目标，接收者必须具备有效订阅资格。",
+          "type": "string",
+          "const": "group"
+        },
+        {
+          "description": "同租户路由内的有限用户列表。",
+          "type": "string",
+          "const": "uids"
+        },
+        {
+          "description": "同租户路由广播，只允许显式批准的受信来源。",
+          "type": "string",
+          "const": "tenant_route_broadcast"
+        }
+      ]
+    },
+    "PayloadAccess": {
+      "description": "业务接口可取得原始正文、schema 转换结果或明确批准的摘要；不根据请求临时切换布局。",
+      "oneOf": [
+        {
+          "description": "保留路由原始编码正文，通过独立正文布局交给业务接口。",
+          "type": "string",
+          "const": "raw_body"
+        },
+        {
+          "description": "按冻结 schema 转换成业务接口可读的 JSON 参数。",
+          "type": "string",
+          "const": "json"
+        },
+        {
+          "description": "仅提供批准的控制元数据与摘要，不向接口暴露正文。",
+          "type": "string",
+          "const": "metadata_only"
+        }
+      ]
+    },
+    "Notifications": {
+      "description": "开放 notify 仍要求每个操作显式启用与授权。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否开放 notify 白名单能力，关闭不影响合法 sub、心跳和服务端下行。",
+          "type": "boolean",
+          "default": false
+        },
+        "operations": {
+          "description": "有限通知操作目录，名称唯一并且逐项验证动作所需引用。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Operation"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "Operation": {
+      "description": "业务通知操作的完整声明，输入和输出均绑定当前路由 codec。",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "客户端可请求的白名单操作名，不是任意函数或脚本入口。",
+          "type": "string"
+        },
+        "enabled": {
+          "description": "是否开放本操作，关闭不影响其它已启用的通知操作。",
+          "type": "boolean",
+          "default": false
+        },
+        "action": {
+          "description": "固定内置动作类别，不能取得通用发送器或路由管理能力。",
+          "$ref": "#/$defs/Action"
+        },
+        "authorization": {
+          "description": "本操作所需的当前身份、连接授权或远程业务授权策略。",
+          "$ref": "#/$defs/OperationAuthorization"
+        },
+        "endpointRef": {
+          "description": "需要 HTTP 执行或刷新时的固定目标端点，授权与执行职责按动作区分。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "publisherRef": {
+          "description": "业务信号动作使用的独立发布入口，不能与客户端下行用途混用。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "requestSchema": {
+          "description": "可选输入正文 schema，缺省时该操作不能接收任意业务体。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "responseSchema": {
+          "description": "可选操作结果正文 schema，未声明则不透传远端任意对象。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "action",
+        "authorization"
+      ]
+    },
+    "Action": {
+      "description": "固定镜像允许的封闭操作集合，没有任意 handler、脚本或广播动作。",
+      "oneOf": [
+        {
+          "description": "只查询当前会话自身状态。",
+          "type": "string",
+          "const": "self_status"
+        },
+        {
+          "description": "按路由策略刷新本会话授权，不能替换主体。",
+          "type": "string",
+          "const": "refresh_authorization"
+        },
+        {
+          "description": "执行固定业务 HTTP 调用，仅向原请求者回复结果。",
+          "type": "string",
+          "const": "remote_call"
+        },
+        {
+          "description": "向固定业务信号入口发布，不取得终端下行权限。",
+          "type": "string",
+          "const": "business_signal"
+        }
+      ]
+    },
+    "OperationAuthorization": {
+      "description": "通知权限必须单独声明；远程调用的业务接口可以在同一次调用中完成校验。",
+      "oneOf": [
+        {
+          "description": "有效身份即可申请该白名单操作，其余路由及执行门禁仍生效。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "authenticated"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ]
+        },
+        {
+          "description": "要求连接授权快照明确包含该操作且尚未到期。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "connection_grant"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ]
+        },
+        {
+          "description": "每次操作从指定业务接口取得授权。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "remote_http"
+            },
+            "endpointRef": {
+              "description": "该通知操作的远程业务授权端点，不由客户端选择。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "endpointRef"
+          ]
+        }
+      ]
+    },
+    "Subscriptions": {
+      "description": "订阅开关独立于客户端发送；关闭仍允许清理本连接既有订阅。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否接受新的 sub；关闭后仍允许 unsub 清理当前会话。",
+          "type": "boolean",
+          "default": false
+        },
+        "groupIdFormat": {
+          "description": "群 ID 的规范格式，FAST_FIXED 订阅要求单个 i64 十进制值。",
+          "$ref": "#/$defs/GroupIdFormat",
+          "default": "utf8"
+        },
+        "authorization": {
+          "description": "启用订阅时唯一读取授权来源，不能以无校验策略代替失败的远程验证。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubscriptionAuthorization"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "initial": {
+          "description": "首次 Ready 前的初始订阅来源，不继承其它连接的成员权限。",
+          "$ref": "#/$defs/InitialSubscriptions",
+          "default": {
+            "mode": "none"
+          }
+        },
+        "restore": {
+          "description": "向 SDK 声明重连后是否自动重新申请期望群，每次恢复仍需新的授权。",
+          "$ref": "#/$defs/Toggle",
+          "default": {
+            "enabled": true
+          }
+        },
+        "maxPerSession": {
+          "description": "本会话允许保留的订阅意图总数，待授权预约也占用容量。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "maxPerRequest": {
+          "description": "一次 sub/unsub 的群数量上限，不能超过会话总容量。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 32
+        },
+        "maxGrantTtlMs": {
+          "description": "单个成员读取授权的最长期限，单位毫秒，最终还受身份截止点限制。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 60000
+        }
+      },
+      "additionalProperties": false
+    },
+    "GroupIdFormat": {
+      "description": "跨接入共用的群 ID 约束；固定布局采用单个 i64 的规范十进制表示。",
+      "oneOf": [
+        {
+          "description": "以受限 UTF-8 字符串表示订阅目标。",
+          "type": "string",
+          "const": "utf8"
+        },
+        {
+          "description": "使用单个 i64 的规范十进制文本，供固定布局协议跨语言精确传递。",
+          "type": "string",
+          "const": "i64_decimal"
+        }
+      ]
+    },
+    "SubscriptionAuthorization": {
+      "description": "群读取权威来源；没有失败后自动允许的策略。",
+      "oneOf": [
+        {
+          "description": "每次申请向固定业务接口取得有限成员授权。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "remote_http"
+            },
+            "endpointRef": {
+              "description": "逐次订阅授权使用的固定端点，返回结果仍受当前意图和撤权下界约束。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "endpointRef"
+          ]
+        },
+        {
+          "description": "仅允许显式声明为公共的目标，不推定其它目标也可读取。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "public_allowlist"
+            },
+            "groups": {
+              "description": "明确无需私有成员资格的公共群允许列表，不接受任意群 ID。",
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "groups"
+          ]
+        },
+        {
+          "description": "使用当前连接已取得的有限授权快照，仍复验期限与撤权下界。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "connection_grants"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ]
+        }
+      ]
+    },
+    "InitialSubscriptions": {
+      "description": "初始化订阅是显式策略，不能覆盖同一连接较新的取消意图。",
+      "oneOf": [
+        {
+          "description": "不自动申请，等待客户端显式 sub。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "none"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ]
+        },
+        {
+          "description": "对部署列出的目标逐一走正常订阅授权。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "configured"
+            },
+            "groupIds": {
+              "description": "连接初始化后希望自动申请的有限群列表，仍走相同授权和容量流程。",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "groupIds"
+          ]
+        },
+        {
+          "description": "从连接授权快照申请初始订阅，不能覆盖后续取消意图。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "authorized_snapshot"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode"
+          ]
+        }
+      ]
+    },
+    "Toggle": {
+      "description": "权限开关的缺省值为关闭，缺字段不能扩大能力。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否启用所属策略，具体能力仍须满足该策略的授权与资源前提。",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Descriptor": {
+      "description": "原生 ProtocolBytes 描述符在产品配置中的结构投影，不承担编码或类型编译。",
+      "type": "object",
+      "properties": {
+        "schemaId": {
+          "description": "当前路由内唯一的协议对象名称，必须与 schemas 中的键一致。",
+          "type": "string"
+        },
+        "fields": {
+          "description": "按 tag 定义的字段列表，顺序与唯一性由共享 SchemaPlan 校验。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Field"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schemaId",
+        "fields"
+      ]
+    },
+    "Field": {
+      "description": "协议字段的配置结构；默认和类型名保持共享动态描述符合同。",
+      "type": "object",
+      "properties": {
+        "tag": {
+          "description": "线路字段编号，重复或超出所选模式范围时编译拒绝。",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "name": {
+          "description": "JSON 模式与类型目录使用的字段名称。",
+          "type": "string"
+        },
+        "type": {
+          "description": "当前字段的唯一类型，嵌套对象仍使用路由确定的统一模式。",
+          "$ref": "#/$defs/Type"
+        },
+        "nullable": {
+          "description": "是否接受空引用；关闭时缺少必需引用字段会被拒绝。",
+          "type": "boolean",
+          "default": false
+        },
+        "maxBytes": {
+          "description": "当前字段编码区域最大字节数，不代替整帧及节点预算。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 65536
+        },
+        "maxElements": {
+          "description": "集合元素个数上限，仍受共享计划的总动态值预算限制。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1024
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tag",
+        "name",
+        "type"
+      ]
+    },
+    "Type": {
+      "description": "共享 ProtocolBytes 动态描述符允许的封闭类型集合。",
+      "oneOf": [
+        {
+          "description": "布尔值，按所选 ProtocolBytes 模式编码。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "bool"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "有符号八位整数，超出范围不能静默截断。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "i8"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "有符号十六位整数。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "i16"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "有符号三十二位整数。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "i32"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "有符号六十四位整数，JSON 投影遵循共享计划的精确整数合同。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "i64"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "ProtocolBytes 字符类型，使用共享计划的合法字符范围。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "char"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "单精度浮点值，合法表示由共享计划校验。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "f32"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "双精度浮点值，合法表示由共享计划校验。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "f64"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "受字段字节上限约束的文本。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "受字段字节上限约束的原始字节序列。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "bytes"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "description": "固定名称及 ordinal 的枚举，排列是线路合同的一部分。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "enum"
+            },
+            "variants": {
+              "description": "按 ordinal 排列的合法枚举名，改变排列会改变线路含义。",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "variants"
+          ]
+        },
+        {
+          "description": "引用本路由内已编译对象，嵌套对象沿用同一序列化模式。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "message"
+            },
+            "schemaRef": {
+              "description": "当前路由 schemas 中的对象引用，不能读取外部文件或远端地址。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "schemaRef"
+          ]
+        },
+        {
+          "description": "同一元素类型的有界列表，递归仍受总体资源预算限制。",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "list"
+            },
+            "element": {
+              "description": "所有元素共用的类型，可递归组合受限集合与对象。",
+              "$ref": "#/$defs/Type"
+            },
+            "nullableElements": {
+              "description": "是否允许集合元素为空，二进制零长度元素遵循 ProtocolBytes 固定合同。",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "element"
+          ]
+        }
+      ]
+    },
+    "EventDefinition": {
+      "description": "业务事件的唯一 schema 与投递特征，不能由逐条消息选择另一种编码。",
+      "type": "object",
+      "properties": {
+        "schema": {
+          "description": "本事件固定的业务 schema 引用，必须在路由目录中可编译。",
+          "type": "string"
+        },
+        "maxBytes": {
+          "description": "本事件正文最大字节数，同时服从传输和来源更小的上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "coalescible": {
+          "description": "是否明确允许把尚未写出的同目标同事件状态替换为最新值，普通逐条消息默认禁止。",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "maxBytes"
+      ]
+    },
+    "RemotePolicy": {
+      "description": "可选远程授权阶段，关闭不移除其它身份或订阅授权要求。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否执行所属业务阶段的额外远程授权或刷新，默认不开启。",
+          "type": "boolean",
+          "default": false
+        },
+        "endpointRef": {
+          "description": "开启时必须提供的固定端点引用，关闭不把拒绝转换成允许。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "Authorization": {
+      "description": "刷新和兼容选项都需要当前定义明确开放，不能恢复旧权限。",
+      "type": "object",
+      "properties": {
+        "cache": {
+          "description": "默认关闭的只读订阅授权缓存，不作用于身份刷新或单次消息发送。",
+          "$ref": "#/$defs/CachePolicy"
+        },
+        "refresh": {
+          "description": "自动与显式授权刷新共用的策略，新的证据仍需关联当前主体并复验撤权下界。",
+          "$ref": "#/$defs/RefreshPolicy",
+          "default": {
+            "enabled": false,
+            "endpointRef": null
+          }
+        },
+        "control": {
+          "description": "持久业务撤权的独立来源、生产者及动作授权。",
+          "$ref": "#/$defs/ControlPolicy",
+          "default": {
+            "enabled": false,
+            "ingressRef": null,
+            "producers": {}
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CachePolicy": {
+      "description": "只读订阅授权的可选缓存，默认关闭，所有命中仍在应用点复验撤权与当前意图。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否复用同一精确会话的只读订阅判定，关闭则逐次调用业务端点。",
+          "type": "boolean",
+          "default": false
+        },
+        "positiveTtlMs": {
+          "description": "正缓存的最大毫秒数，最终取远端资格和当前身份截止点的更早者。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 1000
+        },
+        "negativeTtlMs": {
+          "description": "明确拒绝的独立短缓存毫秒数；网络失败不进入负缓存。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 200
+        },
+        "maxEntries": {
+          "description": "每会话最多保留的判定或正在合并的查询数，仍受节点总量约束。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "maxBytes": {
+          "description": "每会话缓存保留字节上限，包含仍被等待者引用的旧条目。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1048576
+        },
+        "coalesce": {
+          "description": "是否合并同一精确授权键的在途只读查询，各等待者仍独立取消和超时。",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "RefreshPolicy": {
+      "description": "刷新开关与端点随路由定义冻结；开启后自动维护已有 Ready 会话。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否允许主动或显式刷新；关闭不延长任何现有授权。",
+          "type": "boolean",
+          "default": false
+        },
+        "endpointRef": {
+          "description": "只读刷新授权使用的固定业务端点，不接受客户端选择目标。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "schedule": {
+          "description": "提前量、抖动和失败退避，网络调用仍受节点与端点预算约束。",
+          "$ref": "#/$defs/SchedulePolicy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SchedulePolicy": {
+      "description": "每会话只保留一个在途刷新意图，队列与执行并发另有节点上限。",
+      "type": "object",
+      "properties": {
+        "advanceMs": {
+          "description": "在现有授权到期前开始刷新的毫秒数，不能用作延长授权的宽限期。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        },
+        "jitterMs": {
+          "description": "按会话稳定分散额外提前量的最大毫秒数，避免集中到期同时请求。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 1000
+        },
+        "retryMs": {
+          "description": "连续尝试的最短间隔，拒绝、超时和容量不足均不紧密重试。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 1000
+        },
+        "timeoutMs": {
+          "description": "单次刷新包含排队和网络等待的最长毫秒数，仍受现有授权截止点收紧。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 1500
+        }
+      },
+      "additionalProperties": false
+    },
+    "ControlPolicy": {
+      "description": "业务撤权只从明确批准的专用来源进入，关闭时不接受任何授权控制动作。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否允许本路由从独立受信入口接受业务撤权，关闭不清除已有持久下界。",
+          "type": "boolean",
+          "default": false
+        },
+        "ingressRef": {
+          "description": "固定授权控制入口引用，不能使用普通业务下行来源代替。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "producers": {
+          "description": "允许发送撤权命令的生产者及其租户、动作范围。",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Permissions"
+          },
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "Permissions": {
+      "description": "生产者仅能操作显式租户和固定动作集合，普通下行权限不蕴含这些权限。",
+      "type": "object",
+      "properties": {
+        "tenantIds": {
+          "description": "该生产者允许撤权的租户集合，不能由命令自报扩大。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "actions": {
+          "description": "该生产者允许执行的有限撤权动作集合，签名有效仍需逐项检查。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenantIds",
+        "actions"
+      ]
+    },
+    "OriginCheck": {
+      "description": "Origin 是浏览器来源限制，不能替代用户身份。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否核对 WS Origin，身份校验始终独立存在。",
+          "type": "boolean",
+          "default": true
+        },
+        "allowedOrigins": {
+          "description": "允许的精确来源集合，不支持通配符扩张。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "allowMissing": {
+          "description": "是否允许没有 Origin 的接入，不能据此跳过主体和路由授权。",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Connections": {
+      "description": "路由附加配额关闭时仍有部署级总资源限制。",
+      "type": "object",
+      "properties": {
+        "limitEnabled": {
+          "description": "是否启用本路由连接数量策略，节点物理硬上限始终生效。",
+          "type": "boolean",
+          "default": true
+        },
+        "scope": {
+          "description": "路由及同用户配额按节点还是按持久集群权威计数。",
+          "$ref": "#/$defs/QuotaScope",
+          "default": "node"
+        },
+        "sameUserPolicy": {
+          "description": "同租户同用户的新连接策略，替换旧会话必须等待对应真实 writer。",
+          "$ref": "#/$defs/SameUserPolicy",
+          "default": "allow_multiple"
+        },
+        "maxConnections": {
+          "description": "当前配额作用域内本路由最大连接数，不等于唯一在线用户数。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 10000
+        },
+        "maxPerUid": {
+          "description": "同租户同用户在本路由允许的最大会话数。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8
+        },
+        "maxPendingOperations": {
+          "description": "单会话允许的操作在途数量，同时受节点全局操作预算约束。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8
+        },
+        "operationsPerSecond": {
+          "description": "每会话一秒窗口内接受的业务操作次数上限。",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0,
+          "default": 32
+        },
+        "requests": {
+          "description": "本会话请求身份、重复关联和结果保留的有限缓存策略。",
+          "$ref": "#/$defs/RequestCache",
+          "default": {
+            "maxRecords": 256,
+            "maxBytes": 1048576,
+            "retentionMs": 30000
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "QuotaScope": {
+      "description": "额外连接配额的计数范围，集群范围需要权威许可而不是 presence 估算。",
+      "oneOf": [
+        {
+          "description": "在当前节点计算路由与同用户配额。",
+          "type": "string",
+          "const": "node"
+        },
+        {
+          "description": "由持久集群账本裁决名额，节点 presence 不能替代权威。",
+          "type": "string",
+          "const": "cluster"
+        }
+      ]
+    },
+    "SameUserPolicy": {
+      "description": "同租户同路由下新旧会话的接纳关系，替换也受真实写出排空约束。",
+      "oneOf": [
+        {
+          "description": "在数量上限内允许同一用户持有多个会话。",
+          "type": "string",
+          "const": "allow_multiple"
+        },
+        {
+          "description": "已有同用户会话时拒绝新连接。",
+          "type": "string",
+          "const": "reject_new"
+        },
+        {
+          "description": "撤销旧会话，等待全部旧写出排空后再接纳新连接。",
+          "type": "string",
+          "const": "replace_old"
+        }
+      ]
+    },
+    "RequestCache": {
+      "description": "同一会话内请求结果的有限保留策略，不能替代业务 operationId 的持久幂等。",
+      "type": "object",
+      "properties": {
+        "maxRecords": {
+          "description": "单会话请求关联记录数量上限，重复请求与首次执行共用同一记录。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        },
+        "maxBytes": {
+          "description": "单会话已完成结果正文的逻辑字节预算，同时受节点总预算约束。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1048576
+        },
+        "retentionMs": {
+          "description": "请求结果关联保留毫秒数，不构成跨进程持久业务幂等保证。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 30000
+        }
+      },
+      "additionalProperties": false
+    },
+    "ServicePush": {
+      "description": "来源隔离和目标权限都满足后才允许服务推送。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否接纳受信业务下行，开启不允许客户端直接向其它连接发送。",
+          "type": "boolean",
+          "default": true
+        },
+        "ingressRef": {
+          "description": "本路由唯一受信业务消费入口引用，生产者不能自行选另一条来源。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "allowedProducers": {
+          "description": "允许向本路由推送的生产者集合，入口认证通过后仍需核对。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "allowedTargets": {
+          "description": "允许的下行目标类型，不得由消息转换为其它更宽的范围。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/TargetKind"
+          },
+          "default": [
+            "group",
+            "uids"
+          ]
+        },
+        "validateBody": {
+          "description": "是否按冻结 schema 物化检查正文；关闭仍检查长度、schema 关联及所有投递权限。",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Receiving": {
+      "description": "用户定向和群接收能力分别控制，互不隐式开启发送权限。",
+      "type": "object",
+      "properties": {
+        "direct": {
+          "description": "是否允许用户定向接收，仍需当前有效的 direct 接收证据。",
+          "$ref": "#/$defs/Toggle",
+          "default": {
+            "enabled": true
+          }
+        },
+        "group": {
+          "description": "是否允许群目标接收，仍需有效订阅意图、成员资格和群版本。",
+          "$ref": "#/$defs/Toggle",
+          "default": {
+            "enabled": true
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Delivery": {
+      "description": "投递策略保留消息原始期限，不以慢消费者重试刷新有效期。",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "路由只允许 realtime，进程重启不恢复停机期间的业务积压。",
+          "type": "string",
+          "const": "realtime",
+          "default": "realtime"
+        },
+        "maxTtlMs": {
+          "description": "业务消息从创建到到期允许的最长毫秒跨度，重试不重算寿命。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 60000
+        },
+        "futureSkewMs": {
+          "description": "业务创建时刻允许领先节点墙钟的毫秒误差上限。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 2000
+        },
+        "clientAck": {
+          "description": "终端确认层级、期限和容量，不表示服务端保存离线历史。",
+          "$ref": "#/$defs/ClientAck",
+          "default": {
+            "enabled": false,
+            "level": null,
+            "timeoutMs": 10000,
+            "maxPending": 128
+          }
+        },
+        "deduplication": {
+          "description": "是否在原消息期限内抑制本节点已完成的相同消息，冲突内容不能覆盖旧键。",
+          "$ref": "#/$defs/Toggle",
+          "default": {
+            "enabled": true
+          }
+        },
+        "slowConsumer": {
+          "description": "队列压力时关闭、拒绝新消息或按声明保留最新状态的明确策略。",
+          "$ref": "#/$defs/SlowConsumerPolicy",
+          "default": "disconnect"
+        },
+        "maxQueueMessages": {
+          "description": "单会话尚未移交 writer 的完整包数量上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "maxQueueBytes": {
+          "description": "单会话排队与实际写出共同持有的逻辑字节上限，共享正文仍按接收者计费。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1048576
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClientAck": {
+      "description": "终端回执是有界观察能力，不阻塞 MQ 处理水位。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否为业务下行建立终端票据，关闭不把完整写出伪装为终端确认。",
+          "type": "boolean",
+          "default": false
+        },
+        "level": {
+          "description": "开启时要求的 SDK 接收或应用处理层级，不能把低层级确认升级。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AckLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "timeoutMs": {
+          "description": "从实际投递责任起约束的确认毫秒预算，消息和资格截止点仍优先。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 10000
+        },
+        "maxPending": {
+          "description": "单会话同时待决的回执票据数量上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        }
+      },
+      "additionalProperties": false
+    },
+    "AckLevel": {
+      "description": "回执层级只能由当前路由选择，不能把接纳消息等同于业务处理成功。",
+      "oneOf": [
+        {
+          "description": "SDK 确认接收到对应消息，不表示应用完成业务处理。",
+          "type": "string",
+          "const": "sdk_received"
+        },
+        {
+          "description": "应用明确确认处理结果，SDK 接收不能代替此层级。",
+          "type": "string",
+          "const": "application_processed"
+        }
+      ]
+    },
+    "SlowConsumerPolicy": {
+      "description": "单连接发送压力达到上限时的行为，不改变原消息期限或投递权限。",
+      "oneOf": [
+        {
+          "description": "关闭无法及时接收的连接，停止继续积压。",
+          "type": "string",
+          "const": "disconnect"
+        },
+        {
+          "description": "保留已入队内容，拒绝新的投递。",
+          "type": "string",
+          "const": "reject_new"
+        },
+        {
+          "description": "仅对声明为可替换的状态消息保留最新完整包，不替换已交给 writer 的内容。",
+          "type": "string",
+          "const": "keep_latest"
+        }
+      ]
+    },
+    "Lifecycle": {
+      "description": "分离初始化请求与上下线事实，事实通知失败不能保留失效权限。",
+      "type": "object",
+      "properties": {
+        "initialization": {
+          "description": "Ready 之前的业务资料和授权请求，不与 online 事实混用。",
+          "$ref": "#/$defs/Hook",
+          "default": {
+            "enabled": false,
+            "required": true,
+            "target": null,
+            "timeoutMs": 5000,
+            "reply": null
+          }
+        },
+        "online": {
+          "description": "首次实际 Ready 后发送的精确连接上线事实策略。",
+          "$ref": "#/$defs/FactHook",
+          "default": {
+            "enabled": false,
+            "target": null,
+            "timeoutMs": 5000
+          }
+        },
+        "offline": {
+          "description": "会话退出后的精确下线事实策略，未就绪即失败也能报告 wasReady=false。",
+          "$ref": "#/$defs/FactHook",
+          "default": {
+            "enabled": false,
+            "target": null,
+            "timeoutMs": 5000
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Hook": {
+      "description": "Ready 前初始化策略，依赖其授权时必须等待明确成功。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否执行连接初始化，关闭不发初始化请求或等待业务回复。",
+          "type": "boolean",
+          "default": false
+        },
+        "required": {
+          "description": "初始化失败是否阻止 Ready；依赖初始化授权的策略必须要求成功。",
+          "type": "boolean",
+          "default": true
+        },
+        "target": {
+          "description": "开启初始化时使用的固定 HTTP 或 MQ 目标，客户端不能指定。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HookTarget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "timeoutMs": {
+          "description": "初始化总等待毫秒预算，与原始接入及身份截止点共同收窄。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        },
+        "reply": {
+          "description": "MQ 初始化的独立受信回复策略，broker 接受请求不能代替授权完成。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InitializationReplyPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "HookTarget": {
+      "description": "连接生命周期只允许部署批准的 HTTP 或业务命令入口。",
+      "oneOf": [
+        {
+          "description": "通过固定受管 HTTP 端点交互。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "http"
+            },
+            "endpointRef": {
+              "description": "生命周期 HTTP 交互的固定受权端点引用。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "endpointRef"
+          ]
+        },
+        {
+          "description": "通过用途匹配的固定 MQ 发布器交互。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "mq"
+            },
+            "publisherRef": {
+              "description": "生命周期 MQ 请求或事实的固定发布器引用，来源用途必须相符。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "publisherRef"
+          ]
+        }
+      ]
+    },
+    "InitializationReplyPolicy": {
+      "description": "MQ 初始化回复只能来自独立入口和明确生产者，不接受客户端填写来源。",
+      "type": "object",
+      "properties": {
+        "ingressRef": {
+          "description": "唯一允许完成该初始化等待者的独立回复入口。",
+          "type": "string"
+        },
+        "allowedProducers": {
+          "description": "允许签发本初始化结果的业务生产者集合，必须匹配完整会话与请求。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxGrantTtlMs": {
+          "description": "初始化回复中读取证据的最长有效毫秒数，还受身份期限限制。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "ingressRef",
+        "allowedProducers",
+        "maxGrantTtlMs"
+      ]
+    },
+    "FactHook": {
+      "description": "上下线事实不产生授权，不支持用 required 阻止或恢复本地状态迁移。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否发布该类连接事实，关闭不会阻止会话权限先行失效。",
+          "type": "boolean",
+          "default": false
+        },
+        "target": {
+          "description": "固定 HTTP 或 MQ 事实目标，不接受任意业务脚本。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HookTarget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "timeoutMs": {
+          "description": "该条事实的交付毫秒预算，重试保持原事件身份且服从宿主关闭期限。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        }
+      },
+      "additionalProperties": false
+    },
+    "Compatibility": {
+      "description": "显式启用的旧接入别名，始终复用相同身份、订阅与路由门禁。",
+      "type": "object",
+      "properties": {
+        "joinLeaveAliases": {
+          "description": "是否把旧 join/leave 事件映射到相同 sub/unsub 授权和结果路径。",
+          "type": "boolean",
+          "default": false
+        },
+        "legacyPath": {
+          "description": "是否允许以标准 namespace 作为旧 HTTP 路径，将线协议根 namespace 绑定到该冻结定义。",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "RemoteEndpoint": {
+      "description": "固定业务远程入口，不接受客户端提供的地址或服务名。",
+      "type": "object",
+      "properties": {
+        "target": {
+          "description": "部署固定的直连或服务发现目标，远端响应不能更换此目标。",
+          "$ref": "#/$defs/RemoteTarget"
+        },
+        "timeoutMs": {
+          "description": "单次调用总预算，单位毫秒；与操作原始截止点取较早值。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "maxResponseBytes": {
+          "description": "响应正文最大字节数，超过上限拒绝解析及授权。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "maxIdentityTtlMs": {
+          "description": "该端点可签发身份或授权证据的最长期限，单位毫秒。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "call": {
+          "description": "请求方法、并发、服务凭据与显式字段映射策略。",
+          "$ref": "#/$defs/RemoteCallPolicy",
+          "default": {
+            "method": "POST",
+            "maxInFlight": 128,
+            "serviceTokenSecretRef": null,
+            "parameters": {},
+            "responseFields": {},
+            "allowValue": "allow",
+            "denyValue": "deny"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "timeoutMs",
+        "maxResponseBytes",
+        "maxIdentityTtlMs"
+      ]
+    },
+    "RemoteTarget": {
+      "description": "URL 与服务发现互斥，二者都借用 napp 管理的 HTTP 生命周期。",
+      "oneOf": [
+        {
+          "description": "通过受管 HTTP 客户端访问固定绝对地址。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "direct"
+            },
+            "clientRef": {
+              "description": "napp 中已经声明的受管 HTTP 客户端引用，共用其连接池和关闭责任。",
+              "type": "string"
+            },
+            "url": {
+              "description": "允许直连的固定绝对地址，不从客户端输入或远端响应重定向获得。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "clientRef",
+            "url"
+          ]
+        },
+        {
+          "description": "由受管服务发现选择实例，服务名称及请求路径仍由部署固定。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "discovery"
+            },
+            "connection": {
+              "description": "受管服务发现连接引用，限定注册中心及命名空间范围。",
+              "type": "string"
+            },
+            "service": {
+              "description": "部署指定的目标服务名，由共享发现目录选择可用实例。",
+              "type": "string"
+            },
+            "path": {
+              "description": "固定服务内路径，不接受客户端拼接任意路由或查询目标。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "connection",
+            "service",
+            "path"
+          ]
+        }
+      ]
+    },
+    "RemoteCallPolicy": {
+      "description": "远端接口的并发、服务认证及兼容映射，不允许客户端决定目标或 header 名。",
+      "type": "object",
+      "properties": {
+        "method": {
+          "description": "部署固定的 HTTP 方法，客户端上行不能覆盖。",
+          "$ref": "#/$defs/RemoteMethod",
+          "default": "POST"
+        },
+        "maxInFlight": {
+          "description": "当前端点允许的并发调用数；等待仍受节点容量和原始截止点约束。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "serviceTokenSecretRef": {
+          "description": "可选服务凭据的 secret 引用，仅交给受权固定端点，不转发客户端任意 header。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "parameters": {
+          "description": "目标参数名到固定来源映射，只补充请求 parameters。",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Parameter"
+          },
+          "default": {}
+        },
+        "responseFields": {
+          "description": "标准响应字段到远端 JSON Pointer 的显式映射，映射后仍按标准模型校验。",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "allowValue": {
+          "description": "远端允许值的固定文本，映射为标准 allow 后仍需关联和期限校验。",
+          "type": "string",
+          "default": "allow"
+        },
+        "denyValue": {
+          "description": "远端拒绝值的固定文本；其它未知值不能隐式视为允许。",
+          "type": "string",
+          "default": "deny"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RemoteMethod": {
+      "description": "远程调用方法由部署固定，GET 不转交用户凭据或执行业务副作用。",
+      "oneOf": [
+        {
+          "description": "只读调用，不用于携带用户凭据或执行有业务副作用的操作。",
+          "type": "string",
+          "const": "GET"
+        },
+        {
+          "description": "标准 JSON 或原始正文请求；副作用仍由固定端点合同约束。",
+          "type": "string",
+          "const": "POST"
+        }
+      ]
+    },
+    "Parameter": {
+      "description": "固定输入映射只写 parameters，不能覆盖 context、principal 或关联标识。",
+      "oneOf": [
+        {
+          "description": "使用部署常量，不从客户端请求读取值。",
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "constant"
+            },
+            "value": {
+              "description": "部署固定写入 parameters 的值，不能覆盖可信上下文。"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "value"
+          ]
+        },
+        {
+          "description": "从允许的请求路径读取有界值，必需值缺失时不发起调用。",
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "field"
+            },
+            "pointer": {
+              "description": "从固定请求模型读取值的 JSON Pointer，配置校验限制可读取范围。",
+              "type": "string"
+            },
+            "required": {
+              "description": "字段缺失时是否拒绝调用，拒绝发生在请求移交 HTTP 之前。",
+              "type": "boolean"
+            },
+            "maxBytes": {
+              "description": "映射值的最大序列化字节数，同时参与请求构造预算。",
+              "type": "integer",
+              "format": "uint",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "pointer",
+            "required",
+            "maxBytes"
+          ]
+        }
+      ]
+    },
+    "Verifier": {
+      "description": "一条本地身份验证策略，签名、签发者、接收者和期限共同决定凭据有效性。",
+      "type": "object",
+      "properties": {
+        "issuer": {
+          "description": "必须精确匹配的签发者，签名正确但签发者不同仍拒绝。",
+          "type": "string"
+        },
+        "audience": {
+          "description": "当前服务要求的接收者声明，不能只凭签名建立身份。",
+          "type": "string"
+        },
+        "algorithms": {
+          "description": "部署允许的签名算法集合，token 不能自行选择目录外算法。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "keys": {
+          "description": "公钥的固定配置或受管远程来源，不包含产品业务路由逻辑。",
+          "$ref": "#/$defs/Keys"
+        },
+        "maxTokenTtlMs": {
+          "description": "可接受 token 有效跨度的上限，配置单位毫秒，JWT NumericDate 保持标准秒语义。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "clockToleranceMs": {
+          "description": "验证时间声明时允许的有限时钟误差毫秒数，不改变会话原始授权期限。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 0
+        },
+        "claims": {
+          "description": "从已验证声明到内部身份字段的固定名称映射。",
+          "$ref": "#/$defs/Claims"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "issuer",
+        "audience",
+        "algorithms",
+        "keys",
+        "maxTokenTtlMs",
+        "claims"
+      ]
+    },
+    "Keys": {
+      "description": "JWT 公钥来源，只接受部署选择的材料，不使用令牌中的远程地址。",
+      "oneOf": [
+        {
+          "description": "使用配置中的固定公钥集合。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "static"
+            },
+            "jwks": {
+              "description": "部署固定的公钥集合，不接受客户端提供签名验证材料。"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "jwks"
+          ]
+        },
+        {
+          "description": "从固定 JWKS 地址受限刷新，超出陈旧期限停止放行。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "remote"
+            },
+            "clientRef": {
+              "description": "获取远程 JWKS 的受管 HTTP 客户端引用，共用节点调用预算。",
+              "type": "string"
+            },
+            "url": {
+              "description": "允许读取公钥的固定地址，token 内任意 URL 不会替换它。",
+              "type": "string"
+            },
+            "refreshIntervalMs": {
+              "description": "公钥正常刷新间隔，单位毫秒；未知 kid 仍受合并请求与退避约束。",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "staleAfterMs": {
+              "description": "公钥快照可接受的最大陈旧毫秒数，超过后不能继续用旧材料放行。",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            },
+            "timeoutMs": {
+              "description": "单次 JWKS 获取的最长等待毫秒数，同时受原认证截止点约束。",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "clientRef",
+            "url",
+            "refreshIntervalMs",
+            "staleAfterMs",
+            "timeoutMs"
+          ]
+        }
+      ]
+    },
+    "Claims": {
+      "description": "已验证声明到内部身份的固定映射，字段名不表示已经取得相应权限。",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "description": "已验证 token 中用户身份声明的字段名，不是用户 ID 本身。",
+          "type": "string"
+        },
+        "tenant": {
+          "description": "已验证 token 中租户声明的字段名，参与跨租户隔离。",
+          "type": "string"
+        },
+        "authorizationId": {
+          "description": "已验证 token 中授权证据 ID 的字段名，用于关联其业务来源。",
+          "type": "string"
+        },
+        "authorizationVersion": {
+          "description": "已验证 token 中单调授权版本的字段名，用于复验持久撤权下界。",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "uid",
+        "tenant",
+        "authorizationId",
+        "authorizationVersion"
+      ]
+    },
+    "Ingress": {
+      "description": "来源权限按入口冻结，初始化回复不能借用普通下行通道的生产者资格。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否创建该入口的消费任务和依赖证据；关闭不会自动信任其它入口。",
+          "type": "boolean",
+          "default": false
+        },
+        "purpose": {
+          "description": "固定用途：业务下行、初始化回复或授权控制，三者不能混用记录合同。",
+          "$ref": "#/$defs/IngressPurpose",
+          "default": "push"
+        },
+        "transport": {
+          "description": "固定 Redis Stream 或 Kafka 来源及拓扑声明。",
+          "$ref": "#/$defs/Backend"
+        },
+        "identity": {
+          "description": "生产者认证策略，完成来源校验后仍需复验路由和业务目标。",
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "delivery": {
+          "description": "业务推送和初始化回复只能使用实时消费；可恢复消费仅用于持久授权控制。",
+          "$ref": "#/$defs/DeliveryMode",
+          "default": "realtime"
+        },
+        "maxMetadataBytes": {
+          "description": "每条记录控制元数据最大字节数，解析前核对容量。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 16384
+        },
+        "maxBodyBytes": {
+          "description": "单条业务正文最大字节数，不能替代路由事件自身的更小上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 262144
+        },
+        "batchSize": {
+          "description": "单次读取记录数上限，实际读取还受节点读前字节预算收紧。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 32
+        },
+        "dependencyStaleMs": {
+          "description": "来源证据的最长新鲜度，单位毫秒；无有效进展时关闭相关路由准入。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 2000
+        },
+        "recovery": {
+          "description": "恢复基线的显式初始化资格，不能把缺失持久状态当成空消息源。",
+          "$ref": "#/$defs/Recovery",
+          "default": {
+            "initialize": false
+          }
+        },
+        "deadLetter": {
+          "description": "无效原文的隔离目标，持久隔离完成前不报告源记录已安全处理。",
+          "type": "string"
+        },
+        "deadLetterContract": {
+          "description": "Kafka 隔离主题的独立规格，其保留期限可以与业务主题不同。",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TopicContract"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "transport",
+        "identity",
+        "deadLetter"
+      ]
+    },
+    "IngressPurpose": {
+      "description": "一个入口使用固定来源和单一交付合同，禁止共享 consumer group 代替节点广播。",
+      "oneOf": [
+        {
+          "description": "实时业务下行，仍须校验路由、有效期及接收资格。",
+          "type": "string",
+          "const": "push"
+        },
+        {
+          "description": "仅交给匹配的待决初始化，不可作为普通下行发布。",
+          "type": "string",
+          "const": "initialization_reply"
+        },
+        {
+          "description": "持久授权撤销命令，需要独立来源权限及提交证据。",
+          "type": "string",
+          "const": "authorization_control"
+        }
+      ]
+    },
+    "Backend": {
+      "description": "部署固定的 MQ 目标及拓扑，消息正文不能选择任意来源。",
+      "oneOf": [
+        {
+          "description": "使用指定受管 Redis 来源中的一个 Stream。",
+          "type": "object",
+          "properties": {
+            "backend": {
+              "type": "string",
+              "const": "redis_stream"
+            },
+            "sourceRef": {
+              "description": "当前 MQ 后端的受管连接引用，目录外连接不能从消息字段动态创建。",
+              "type": "string"
+            },
+            "stream": {
+              "description": "当前入口唯一读取的 Redis Stream 名称，须由部署权限隔离写入来源。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "backend",
+            "sourceRef",
+            "stream"
+          ]
+        },
+        {
+          "description": "使用指定 Kafka 主题并核对固定分区与主题合同。",
+          "type": "object",
+          "properties": {
+            "backend": {
+              "type": "string",
+              "const": "kafka"
+            },
+            "sourceRef": {
+              "description": "当前 MQ 后端的受管连接引用，目录外连接不能从消息字段动态创建。",
+              "type": "string"
+            },
+            "topic": {
+              "description": "当前入口唯一读取的 Kafka 主题，必须符合已冻结拓扑。",
+              "type": "string"
+            },
+            "partitionCount": {
+              "description": "预期 Kafka 分区数，拓扑变化时保护入口而不是按新分区静默继续。",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "topicContract": {
+              "description": "可选精确主题规格；省略仍要求实际副本与保留配置有效。",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TopicContract"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "backend",
+            "sourceRef",
+            "topic",
+            "partitionCount"
+          ]
+        }
+      ]
+    },
+    "TopicContract": {
+      "description": "可选的精确部署规格；省略预期值时仍拒绝缺失或不合法的 broker 配置。",
+      "type": "object",
+      "properties": {
+        "replicationFactor": {
+          "description": "全部分区必须一致的副本数，空值仅要求实际副本数合法。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": null
+        },
+        "minInSyncReplicas": {
+          "description": "broker 接受写入所要求的最小同步副本数，不能大于副本数。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": null
+        },
+        "retentionMs": {
+          "description": "预期保留毫秒数；正数为有限保留，-1 表示明确不按时间删除。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64",
+          "default": null
+        },
+        "retentionBytes": {
+          "description": "预期每分区保留字节数；正数为容量上限，-1 表示明确不按容量删除。",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int64",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SourceIdentity": {
+      "description": "入口确定真实生产者的方式，不能信任消息自报身份。",
+      "oneOf": [
+        {
+          "description": "由 broker ACL 保证唯一写入者，部署必须隔离入口写权限。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "acl"
+            },
+            "producer": {
+              "description": "ACL 隔离入口固定代表的生产者，依赖部署限制该来源的写权限。",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "producer"
+          ]
+        },
+        {
+          "description": "用预登记密钥验证完整消息，并映射到该密钥允许的生产者。",
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "hmac_sha256"
+            },
+            "keys": {
+              "description": "允许的 key ID 到生产者及密钥材料映射，不接受消息自带密钥。",
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/SigningKey"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "keys"
+          ]
+        }
+      ]
+    },
+    "SigningKey": {
+      "description": "验签密钥与生产者权限的固定绑定，签名有效不扩大生产者作用域。",
+      "type": "object",
+      "properties": {
+        "producer": {
+          "description": "该签名密钥允许代表的业务生产者，不由消息自报扩大。",
+          "type": "string"
+        },
+        "secretRef": {
+          "description": "HMAC 验签材料的 secret 引用，原文签名覆盖规定的完整输入。",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "secretRef"
+      ]
+    },
+    "DeliveryMode": {
+      "description": "MQ 消费基线策略，实时业务输入与可恢复的安全控制输入分别处理。",
+      "oneOf": [
+        {
+          "description": "本次进程从来源末尾开始，只处理建立消费基线后的在线输入。",
+          "type": "string",
+          "const": "realtime"
+        },
+        {
+          "description": "仅授权控制入口允许恢复未提交的安全状态变更，不适用于业务下行。",
+          "type": "string",
+          "const": "recoverable"
+        }
+      ]
+    },
+    "Recovery": {
+      "description": "恢复状态只能显式建立；已有消费组或围栏丢失时不能据此重新初始化。",
+      "type": "object",
+      "properties": {
+        "initialize": {
+          "description": "是否允许首次建立消费基线；已有实例身份或恢复证据时不得跳过缺口。",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "IngressProcessing": {
+      "description": "MQ 分发的节点总预算独立于连接入站与控制命令，不允许数据流占用控制保留容量。",
+      "type": "object",
+      "properties": {
+        "maxPendingRecords": {
+          "description": "Kafka 异步交接目录的记录数量上限，完成等待重取的记录仍占用责任。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        },
+        "maxKeyPendingRecords": {
+          "description": "Redis 同一业务顺序键允许持有的最大未完成记录数，达到边界暂停预取。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 64
+        },
+        "maxRetryAgeMs": {
+          "description": "从消息首次创建时刻起允许占用重试责任的最长毫秒数，不因重新消费刷新。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 60000
+        },
+        "maxRetainedBytes": {
+          "description": "节点跨异步入口保留的拥有型正文总字节数，不按接收者重复分配。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 67108864
+        },
+        "maxReadBytes": {
+          "description": "业务 Redis 读前保守响应空间预算，单位字节。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 134217728
+        },
+        "maxControlReadBytes": {
+          "description": "初始化回复与授权控制各自独立的读前字节预算，业务积压不能耗尽它们。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8388608
+        },
+        "maxIsolationBytes": {
+          "description": "错误原文进入隔离存储时独立预约的临时字节预算。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 67108864
+        },
+        "maxParallelFanouts": {
+          "description": "节点同时推进的业务分发数上限，不能用无限任务隐藏反压。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 4
+        },
+        "maxCandidateReferences": {
+          "description": "全部活跃分发可同时保存的候选会话引用总数，枚举候选前预约。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1000000
+        },
+        "fanoutBatchSize": {
+          "description": "每次让出执行权前处理的最大接收者数，持续沿用同一原始消息截止点。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "Publisher": {
+      "description": "每个发布器只持有一种权限；普通通知和生命周期不能写入下行入口。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否创建该受管发布入口，业务侧不能动态打开未部署的发布器。",
+          "type": "boolean",
+          "default": false
+        },
+        "purpose": {
+          "description": "固定发布用途，业务信号、受权下行与连接事实不能越权互换。",
+          "$ref": "#/$defs/Purpose"
+        },
+        "transport": {
+          "description": "固定 MQ 目标及拓扑声明，提交时继续使用冻结目标。",
+          "$ref": "#/$defs/Backend"
+        },
+        "producer": {
+          "description": "服务代表的固定生产者身份，下行仍受入口和路由允许列表约束。",
+          "type": "string"
+        },
+        "routeIds": {
+          "description": "该发布器允许服务的有限路由集合，不能向目录外路由发布。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxPending": {
+          "description": "排队和实际发送仍在途的记录数量上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "maxBytes": {
+          "description": "发布入口保留的控制信息和正文逻辑字节预算。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "maxMetadataBytes": {
+          "description": "单次发布的控制区字节上限，编码后必须满足固定合同。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "maxBodyBytes": {
+          "description": "单次发布的原始正文字节上限，不隐式重新编码为其它路由模式。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "timeoutMs": {
+          "description": "一次 broker 提交的最长等待毫秒数，不能延长原业务权限或消息期限。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "purpose",
+        "transport",
+        "producer",
+        "routeIds",
+        "maxPending",
+        "maxBytes",
+        "maxMetadataBytes",
+        "maxBodyBytes",
+        "timeoutMs"
+      ]
+    },
+    "Purpose": {
+      "description": "发布器的固定权限域，同一通道不得混用业务下行与服务事实。",
+      "oneOf": [
+        {
+          "description": "将已经业务授权的消息提交到下行入口。",
+          "type": "string",
+          "const": "push"
+        },
+        {
+          "description": "向业务系统发送受限信号，本身不授予终端投递资格。",
+          "type": "string",
+          "const": "business_signal"
+        },
+        {
+          "description": "发布初始化请求或连接生命周期事实。",
+          "type": "string",
+          "const": "lifecycle"
+        }
+      ]
+    },
+    "LifecycleDelivery": {
+      "description": "连接事实发布与初始化关联的节点预算，两者均不能无限占用业务接入资源。",
+      "type": "object",
+      "properties": {
+        "workers": {
+          "description": "连接事实发布的固定工作分片数，同一精确会话按分片保持发起顺序。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 16
+        },
+        "maxPending": {
+          "description": "已接纳且尚未结束的连接事实总数上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1024
+        },
+        "maxBytes": {
+          "description": "连接事实排队及处理的共享逻辑字节预算。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8388608
+        },
+        "maxEventBytes": {
+          "description": "单个连接事实编码的最大字节数，防止大字段占尽通知容量。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 16384
+        },
+        "maxAttempts": {
+          "description": "每条事实最多发布次数，重试保持原事件 ID、时间和会话序列。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 1
+        },
+        "retryBackoffMs": {
+          "description": "事实发布失败后的固定退避毫秒数，不能延长宿主关闭截止点。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 100
+        },
+        "maxPendingInitializations": {
+          "description": "同时等待 MQ 初始化回复的精确请求数量上限。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "maxInitializationBytes": {
+          "description": "初始化关联及控制信息的独立字节预算，直到回复、取消或到期才释放。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 8388608
+        }
+      },
+      "additionalProperties": false
+    },
+    "ListenerTemplate": {
+      "description": "路由可引用的部署监听边界，路由选择不能扩大模板的协议及资源权限。",
+      "type": "object",
+      "properties": {
+        "bindAddress": {
+          "description": "本地业务监听绑定地址，不代表客户端可访问的外部地址。",
+          "type": "string",
+          "format": "ip",
+          "default": "0.0.0.0"
+        },
+        "defaultPort": {
+          "description": "使用共享监听的路由默认端口，与主受管监听配置核对。",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 3030
+        },
+        "protocols": {
+          "description": "本监听允许的物理接入协议集合，路由不能打开目录外协议。",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Protocol"
+          },
+          "default": [
+            "native_tcp",
+            "native_ws",
+            "socketio"
+          ]
+        },
+        "dedicatedPorts": {
+          "description": "独立端口能力、自动搜索范围及资源限制。",
+          "$ref": "#/$defs/DedicatedPorts",
+          "default": {
+            "allowed": true,
+            "autoStart": 3030,
+            "autoEnd": 65535,
+            "maxListeners": 128,
+            "bindTimeoutMs": 5000
+          }
+        },
+        "maxConnections": {
+          "description": "该监听附加的物理连接数上限，节点硬上限仍同时生效。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 100000
+        },
+        "maxUnauthenticated": {
+          "description": "该监听附加的未认证连接上限，不能覆盖节点全局限制。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 256
+        },
+        "authenticationTimeoutMs": {
+          "description": "从真实接入开始固定的认证毫秒预算，协议识别不重新计时。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        },
+        "advertise": {
+          "description": "外部地址声明与本地端口映射，声明本身不授予业务权限。",
+          "$ref": "#/$defs/Advertisement",
+          "default": {
+            "enabled": false,
+            "host": "",
+            "secure": false,
+            "networkReady": false,
+            "ports": []
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Protocol": {
+      "description": "监听模板允许的外部传输，业务正文编码由路由独立选择。",
+      "oneOf": [
+        {
+          "description": "TCP 上承载原生帧，使用原生握手与认证合同。",
+          "type": "string",
+          "const": "native_tcp"
+        },
+        {
+          "description": "WebSocket 上承载原生帧，升级不等于业务认证成功。",
+          "type": "string",
+          "const": "native_ws"
+        },
+        {
+          "description": "经 Socket.IO 兼容入口建立逻辑路由会话。",
+          "type": "string",
+          "const": "socketio"
+        }
+      ]
+    },
+    "DedicatedPorts": {
+      "description": "路由派生独立监听的许可与容量，端口分配以实际 bind 成功为准。",
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "description": "是否允许引用本模板的路由申请独立监听端口。",
+          "type": "boolean",
+          "default": true
+        },
+        "autoStart": {
+          "description": "未指定端口时尝试 bind 的起始端口，包含该值。",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 3030
+        },
+        "autoEnd": {
+          "description": "自动 bind 的结束端口，包含该值；范围耗尽明确拒绝。",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535,
+          "default": 65535
+        },
+        "maxListeners": {
+          "description": "本模板允许保留的独立监听数量，准备与排空阶段仍占用份额。",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "default": 128
+        },
+        "bindTimeoutMs": {
+          "description": "取得端口与监听准备的最长等待毫秒数，不回退到共享端口。",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0,
+          "default": 5000
+        }
+      },
+      "additionalProperties": false
+    },
+    "Advertisement": {
+      "description": "外部网络由部署准备；端口映射只描述已经建立的连接路径，不创建 NAT、代理或 TLS 终止器。",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "是否把本监听的有限接入声明发布到集群目录，默认不发布。",
+          "type": "boolean",
+          "default": false
+        },
+        "host": {
+          "description": "部署确认的公共主机名或地址，不从本地绑定地址推断。",
+          "type": "string",
+          "default": ""
+        },
+        "secure": {
+          "description": "外部入口是否提供安全传输，用于生成接入提示，不声称本进程终止 TLS。",
+          "type": "boolean",
+          "default": false
+        },
+        "networkReady": {
+          "description": "部署对转发及外部网络已经就绪的明确声明，不代表主动探测结果。",
+          "type": "boolean",
+          "default": false
+        },
+        "ports": {
+          "description": "本地端口到公共端口的有限连续映射，必须覆盖使用的自动端口范围。",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PortMapping"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "PortMapping": {
+      "description": "部署已建立的连续端口映射，服务只据此公告地址，不创建网络转发。",
+      "type": "object",
+      "properties": {
+        "boundStart": {
+          "description": "本地连续端口范围的首个端口，范围长度为 count。",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "publicStart": {
+          "description": "与 bound_start 对应的外部首端口，后续按相同偏移映射。",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "count": {
+          "description": "连续映射的端口数量，必须非零且本地、外部范围均不溢出。",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0,
+          "maximum": 65535
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "boundStart",
+        "publicStart",
+        "count"
+      ]
+    }
+  }
+}

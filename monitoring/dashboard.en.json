@@ -1,0 +1,2226 @@
+{
+  "uid": "nacket-en",
+  "title": "nacket operations",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "tags": [
+    "nacket"
+  ],
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "query": "label_values(napp_instance_info{service_name=\"nacket\"}, deployment_environment)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "cluster",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "query": "label_values(napp_instance_info{service_name=\"nacket\"}, cluster)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "query": "label_values(napp_instance_info{service_name=\"nacket\"}, service_instance_id)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "refresh": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Instance readiness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_runtime_state{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",state=\"ready\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Route states per node",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,state) (((nacket_runtime_state{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",state=~\"routes_online|routes_protected|routes_offline\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} state={{state}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Physical connections and logical sessions",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,resource) (((nacket_live_resources{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",resource=~\"physical_connections|unauthenticated_connections|sessions_ready|sessions_initializing\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} resource={{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Session subscriptions",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,resource) (((nacket_live_resources{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",resource=~\"subscriptions|subscriptions_pending\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} resource={{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Process CPU cores",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((rate(napp_process_cpu_microseconds_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0))))) / 1000000",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Process memory",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,kind) (((napp_process_memory_bytes{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} kind={{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Cgroup CPU quota utilization",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((rate(napp_cgroup_cpu_microseconds_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",mode=\"total\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0))))) / 1000000 / sum by (deployment_environment,cluster,service_name,service_instance_id) (((napp_cgroup_cpu_limit_cores{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Cgroup throttled period ratio",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((rate(napp_cgroup_cpu_periods_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",kind=\"throttled\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0))))) / sum by (deployment_environment,cluster,service_name,service_instance_id) (((rate(napp_cgroup_cpu_periods_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",kind=\"total\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Cgroup memory and finite limit",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,kind) (((napp_cgroup_memory_bytes{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} kind={{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Cgroup OOM events",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,kind) (((rate(napp_cgroup_memory_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",kind=~\"oom|oom_kill|oom_group_kill\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} kind={{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Filesystem capacity",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,mount,kind) (((napp_filesystem_bytes{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} mount={{mount}} kind={{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Filesystem inodes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,mount,kind) (((napp_filesystem_inodes{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} mount={{mount}} kind={{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "File descriptors",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,kind) (((napp_process_fds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} kind={{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Process storage and syscall bytes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,direction,kind) (((rate(napp_process_io_bytes_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} direction={{direction}} kind={{kind}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Visible interface traffic",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,interface,direction) (((rate(napp_network_bytes_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} interface={{interface}} direction={{direction}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Interface errors and drops",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,interface,direction) (((rate(napp_network_errors_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} interface={{interface}} direction={{direction}}"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Interface drops",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,interface,direction) (((rate(napp_network_dropped_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} interface={{interface}} direction={{direction}}"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Connection admission and closure",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 64,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,adapter,outcome) (((rate(nacket_connection_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} adapter={{adapter}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Physical admission rejection",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 72,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,scope,outcome) (((rate(nacket_admissions_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",outcome!=\"accepted\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} scope={{scope}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Application heartbeat outcomes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 72,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,adapter,outcome) (((rate(nacket_heartbeat_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} adapter={{adapter}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Client operations",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,operation,outcome) (((rate(nacket_operations_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} operation={{operation}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Identity verification",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,strategy,outcome) (((rate(nacket_identity_checks_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} strategy={{strategy}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Business authorization",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 88,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,operation,outcome) (((rate(nacket_authorization_checks_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} operation={{operation}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "MQ consumption attempts",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 88,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,broker,outcome) (((rate(nacket_mq_consume_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} broker={{broker}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "MQ publication outcomes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 96,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,channel,outcome) (((rate(nacket_mq_publish_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} channel={{channel}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Required MQ sources",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 96,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,state) (((nacket_runtime_state{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",state=~\"dependencies_ready|dependencies_unavailable\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} state={{state}}"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "type": "timeseries",
+      "title": "Delivery stages",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 104,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,stage,outcome) (((rate(nacket_deliveries_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} stage={{stage}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "Terminal receipts",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 104,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,level,outcome) (((rate(nacket_receipt_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} level={{level}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "Receipt correlation checks",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 112,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,level,outcome) (((rate(nacket_receipt_inputs_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} level={{level}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Queued items and active work",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 112,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,resource) (((nacket_live_resources{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",resource=~\".*items|operations|remote_calls|control_pending|authorization_commands|initialization_requests|fanouts|receipts\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} resource={{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Logical bytes and retained input",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 120,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,resource) (((nacket_live_resources{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",resource=~\".*bytes\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} resource={{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Queue rejections and cancellation",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 120,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,queue,outcome) (((rate(nacket_queue_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} queue={{queue}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "type": "timeseries",
+      "title": "Current oldest pending age",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 128,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,resource) (((nacket_oldest_pending_age_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} resource={{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "type": "timeseries",
+      "title": "Pending age observation completeness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 128,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,resource) (((nacket_pending_age_complete{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} resource={{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "type": "timeseries",
+      "title": "Processing stage P99",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 136,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by (deployment_environment,cluster,service_name,service_instance_id,stage,le) (((rate(nacket_duration_seconds_bucket{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0))))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} stage={{stage}}"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "type": "timeseries",
+      "title": "Payload traffic by protocol mode",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 136,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,mode) (((rate(nacket_payload_bytes_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} mode={{mode}}"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "type": "timeseries",
+      "title": "Explicit payload copy bytes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 144,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,boundary) (((rate(nacket_payload_copy_bytes_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} boundary={{boundary}}"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "type": "timeseries",
+      "title": "Materialized payload input bytes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 144,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,purpose,outcome) (((rate(nacket_payload_deserialization_bytes_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} purpose={{purpose}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "type": "timeseries",
+      "title": "Control authority operations",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 152,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,operation,outcome) (((rate(nacket_control_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} operation={{operation}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "type": "timeseries",
+      "title": "MQ position observation freshness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 152,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,backend,ingress) (((nacket_broker_observation_fresh{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} backend={{backend}} ingress={{ingress}}"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "MQ position observation age",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 160,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,backend,ingress) (((nacket_broker_observation_age_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} backend={{backend}} ingress={{ingress}}"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "MQ unread position distance",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 160,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,backend,ingress) (((nacket_broker_unread_positions{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} backend={{backend}} ingress={{ingress}}"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "type": "timeseries",
+      "title": "Redis pending records",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 168,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,backend,ingress) (((nacket_broker_pending_records{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} backend={{backend}} ingress={{ingress}}"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "type": "timeseries",
+      "title": "Redis maximum idle since claim",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 168,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,backend,ingress) (((nacket_broker_pending_max_idle_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} backend={{backend}} ingress={{ingress}}"
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "type": "timeseries",
+      "title": "Kafka fully observed partitions",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 176,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,backend,ingress) (((nacket_broker_observed_partitions{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} backend={{backend}} ingress={{ingress}}"
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "type": "timeseries",
+      "title": "MQ independent sampling outcomes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 176,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,backend,ingress,outcome) (((rate(nacket_broker_observations_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} backend={{backend}} ingress={{ingress}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "type": "timeseries",
+      "title": "MQ claim confirmation and retry",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 184,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,operation,outcome) (((rate(nacket_recovery_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} operation={{operation}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "type": "timeseries",
+      "title": "Control snapshot freshness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 184,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_snapshot_fresh{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "type": "timeseries",
+      "title": "Control snapshot age",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 192,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_snapshot_age_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "type": "timeseries",
+      "title": "Effective control authority",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 192,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_authority_fresh{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "type": "timeseries",
+      "title": "Authoritative cluster directory",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 200,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (deployment_environment,cluster,service_name,state) (((nacket_control_authority_snapshot{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0))))) and on (deployment_environment,cluster,service_name) (sum by (deployment_environment,cluster,service_name) (((nacket_control_authority_fresh{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0))))) == 1)",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}} state={{state}}"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "type": "timeseries",
+      "title": "Authority observation age",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 200,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_authority_age_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "type": "timeseries",
+      "title": "Authority observation remaining",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 208,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_authority_remaining_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "type": "timeseries",
+      "title": "Authority oldest pending operation",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 208,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_authority_oldest_operation_age_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "type": "timeseries",
+      "title": "Control barriers and node observations",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 216,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,state) (((nacket_control_snapshot{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} state={{state}}"
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "type": "timeseries",
+      "title": "Oldest control operation age",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 216,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_oldest_operation_age_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "type": "timeseries",
+      "title": "Minimum local permit remaining",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 224,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id) (((nacket_control_permit_min_remaining_seconds{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "type": "timeseries",
+      "title": "Configuration outcomes",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 224,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,operation,outcome) (((rate(nacket_configuration_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} operation={{operation}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "type": "timeseries",
+      "title": "Persistence jobs and pending restart",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 232,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,state) (((nacket_runtime_state{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\",state=~\"persistence_jobs|configuration_pending_restart\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} state={{state}}"
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "type": "timeseries",
+      "title": "Named operations",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 232,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,kind,name,operation,outcome) (((rate(nacket_scope_events_total{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} kind={{kind}} name={{name}} operation={{operation}} outcome={{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "type": "timeseries",
+      "title": "Named resources",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 240,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,kind,name,resource) (((nacket_scope_resources{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} kind={{kind}} name={{name}} resource={{resource}}"
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "type": "timeseries",
+      "title": "Collector availability",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 240,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,collector) (((napp_resource_collection_available{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} collector={{collector}}"
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "type": "timeseries",
+      "title": "Collector state",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 248,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (deployment_environment,cluster,service_name,service_instance_id,collector,state) (((napp_resource_collection_state{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0)))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} collector={{collector}} state={{state}}"
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "type": "timeseries",
+      "title": "Collector latency P99",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 248,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by (deployment_environment,cluster,service_name,service_instance_id,collector,le) (((rate(napp_resource_collection_duration_seconds_bucket{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[$__rate_interval])) and on (deployment_environment,cluster,service_name,service_instance_id) ((count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}) == 1) unless on (deployment_environment,cluster,service_name,service_instance_id) count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} and on (job,instance) (up == 0))))))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} collector={{collector}}"
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "type": "timeseries",
+      "title": "Scrape availability",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 256,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=~\"nacket.*\"} * on (job,instance) group_left (deployment_environment,cluster,service_name,service_instance_id) ((last_over_time(napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"}[5m])) and on (job,instance) (count by (job,instance) (last_over_time(napp_instance_info[5m])) == 1))",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}} job={{job}} instance={{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "type": "timeseries",
+      "title": "Duplicate instance identities",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 256,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count by (deployment_environment,cluster,service_name,service_instance_id) (napp_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"})",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "type": "timeseries",
+      "title": "Platform expected instances",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 264,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (deployment_environment,cluster,service_name,service_instance_id) (platform_expected_instance_info{deployment_environment=~\"$environment\",cluster=~\"$cluster\",service_name=\"nacket\",service_instance_id=~\"$instance\"} == 1)",
+          "legendFormat": "{{deployment_environment}}/{{cluster}}/{{service_name}}/{{service_instance_id}}"
+        }
+      ]
+    }
+  ]
+}

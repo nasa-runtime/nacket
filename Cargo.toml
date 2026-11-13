@@ -1,0 +1,100 @@
+[package]
+name = "nacket"
+version = "1.0.0"
+edition = "2021"
+description = "Persistent-connection gateway with dynamic routes, ProtocolBytes and trusted Redis/Kafka delivery."
+repository = "https://github.com/nasa-runtime/nacket"
+homepage = "https://github.com/nasa-runtime/nacket"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+publish = false
+autotests = false
+autoexamples = false
+default-run = "nacket"
+rust-version = "1.95"
+keywords = ["websocket", "protocolbytes", "messaging", "redis", "kafka"]
+categories = ["network-programming", "asynchronous"]
+include = [
+    "src/**",
+    "zcf/**",
+    "contracts/**",
+    "docs/**",
+    "monitoring/**",
+    "deploy/**",
+    "README.md",
+    "README.en.md",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
+    "THIRD-PARTY.md",
+    "THIRD-PARTY.en.md",
+    "SECURITY.md",
+    "SECURITY.en.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.en.md",
+    "docker/**",
+    "Cargo.toml",
+    "Cargo.lock",
+    "rust-toolchain.toml",
+    "rustfmt.toml",
+    "Dockerfile",
+    ".dockerignore",
+    "ci/**",
+    ".github/workflows/**",
+]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "nacket"
+path = "src/main.rs"
+doc = false
+
+[[bin]]
+name = "nacket-schema"
+path = "src/bin/schema.rs"
+required-features = ["schema"]
+doc = false
+
+[workspace]
+
+[dependencies]
+nasa = { version = "2.0.7", features = [
+    "application",
+    "partition",
+    "log",
+    "ws-redis",
+    "ws-socketio",
+    "ws-kafka",
+    "redis",
+    "kafka-tls",
+    "kafka-zstd",
+    "yml-watch",
+    "nacos-config",
+    "nacos-sdk",
+    "discovery-nacos",
+    "rest-client",
+    "grafana",
+    "crypto",
+    "oauth",
+    "web",
+] }
+tokio = { version = "1.54.1", features = ["full"] }
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+bytes = "1"
+fs2 = "0.4"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+url = "2"
+libc = "0.2"
+axum = "0.8"
+nametrics-core = "2.0.0"
+schemars = { version = "1.2.1", optional = true }
+
+[features]
+default = []
+schema = ["dep:schemars"]

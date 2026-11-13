@@ -1,0 +1,109 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: nacket
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y clang libclang-dev cmake pkg-config perl build-essential
+      - name: Format and build
+        working-directory: nacket
+        run: |
+          cargo fmt --package nacket --check
+          cargo clippy --locked --all-features --all-targets -- -D warnings
+          cargo build --locked --features schema --bins
+          cargo rustdoc --locked --lib --all-features -- -D warnings -D missing-docs
+          python3 ci/verify-docs.py target/doc
+          python3 ci/package-source.py
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - name: Read package version
+        working-directory: nacket
+        run: |
+          python3 - <<'PY'
+          import os, re, tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("Cargo.toml").read_text())["package"]["version"]
+          assert re.fullmatch(
+              r"[0-9]+\.[0-9]+\.[0-9]+", version
+          ), "Stable package version required"
+          if os.environ["GITHUB_REF_TYPE"] == "tag":
+              assert os.environ["GITHUB_REF_NAME"] == version, "Tag and package version differ"
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"APP_VERSION={version}\n")
+          PY
+      - name: Build container
+        working-directory: nacket
+        run: |
+          python3 ci/build-image.py --tag nacket:build-${{ github.sha }}-${{ matrix.arch }} -- \
+            --build-arg APP_VERSION=${APP_VERSION} \
+            --build-arg SOURCE_REVISION=${{ github.sha }}
+      - name: Container executable and communication contract
+        working-directory: nacket
+        run: |
+          docker run --rm --entrypoint ldd nacket:build-${{ github.sha }}-${{ matrix.arch }} /usr/local/bin/nacket
+          docker run --rm --entrypoint nacket-schema nacket:build-${{ github.sha }}-${{ matrix.arch }} communication > communication.generated.json
+          cmp contracts/communication.json communication.generated.json
+      - name: Retain exact image archive
+        working-directory: nacket
+        env:
+          IMAGE_ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir image-artifact
+          docker image save --output image-artifact/nacket-${IMAGE_ARCH}.tar nacket:build-${GITHUB_SHA}-${IMAGE_ARCH}
+          python3 - <<'PY'
+          import hashlib, json, os, tarfile
+          from pathlib import Path
+
+          arch = os.environ["IMAGE_ARCH"]
+          archive = Path(f"image-artifact/nacket-{arch}.tar")
+          with tarfile.open(archive) as source:
+              entries = json.load(source.extractfile("manifest.json"))
+              assert len(entries) == 1, "Single image archive required"
+              raw = source.extractfile(entries[0]["Config"]).read()
+              config = json.loads(raw)
+          assert (
+              config["architecture"] == arch and config["os"] == "linux"
+          ), "Image platform differs"
+          labels = config["config"]["Labels"]
+          assert labels["org.opencontainers.image.version"] == os.environ["APP_VERSION"]
+          assert labels["org.opencontainers.image.revision"] == os.environ["GITHUB_SHA"]
+          record = {
+              "configDigest": "sha256:" + hashlib.sha256(raw).hexdigest(),
+              "sourceRevision": os.environ["GITHUB_SHA"],
+              "cargoLockSha256": hashlib.sha256(Path("Cargo.lock").read_bytes()).hexdigest(),
+              "version": os.environ["APP_VERSION"],
+              "platform": "linux/" + arch,
+          }
+          Path(f"image-artifact/image-identity-{arch}.json").write_text(
+              json.dumps(record, indent=2) + "\n"
+          )
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: image-${{ matrix.arch }}
+          path: nacket/image-artifact/
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error

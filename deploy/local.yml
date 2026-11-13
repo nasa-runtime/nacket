@@ -1,0 +1,86 @@
+application:
+  name: "nacket"
+  mode: "service"
+  startup_timeout_ms: 45000
+  shutdown_timeout_ms: 15000
+log:
+  level: "${NACKET_LOG_LEVEL:info}"
+  path: "${NACKET_LOG_PATH:/usr/local/logs/${application.name}}"
+  color: false
+server:
+  enabled: true
+  host: "0.0.0.0"
+  port: 3031
+  health: true
+  request_body_limit_bytes: 262144
+  max_inflight_requests: 32
+  request_deadline_ms: 2000
+ws:
+  enabled: true
+  addr: "0.0.0.0:3030"
+  multiplex: true
+  auth_timeout_ms: 5000
+  heartbeat_timeout_ms: 60000
+config_watch:
+  enabled: true
+redis:
+  enabled: false
+kafka:
+  enabled: false
+nacos:
+  enabled: false
+discovery:
+  enabled: false
+grafana:
+  observability:
+    enabled: false
+nacket:
+  nodeId: "node-a"
+  clusterId: "cluster-a"
+  scopeEpoch: "1"
+  routeLedger: "data/routes.json"
+  readiness:
+    policy: "runtime"
+  routes:
+    -
+      routeId: "route-a"
+      revision: 1
+      enabled: true
+      serialization: "JSON_BYTES"
+      access:
+        listenerRef: "shared"
+        endpoint: "/route-a"
+        native:
+          enabled: true
+      identity:
+        mode: "anonymous"
+        tenantId: "public"
+        publicRoute: true
+        ttlMs: 30000
+      servicePush:
+        enabled: false
+      receiving:
+        direct:
+          enabled: false
+      originCheck:
+        allowMissing: true
+      connections:
+        maxConnections: 1000
+        maxPendingOperations: 8
+        operationsPerSecond: 20
+      subscriptions:
+        enabled: true
+        authorization:
+          mode: "public_allowlist"
+          groups:
+            - "public-a"
+      notifications:
+        enabled: true
+        operations:
+          -
+            name: "status"
+            enabled: true
+            action: "self_status"
+            authorization:
+              mode: "authenticated"
+  endpoints: {}

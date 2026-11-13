@@ -1,0 +1,122 @@
+application:
+  name: nacket
+  mode: service
+  startup_timeout_ms: 30000
+  shutdown_timeout_ms: 15000
+
+log:
+  # 环境变量未设置时使用 info，文件目录默认随应用名称变化。
+  level: ${NACKET_LOG_LEVEL:info}
+  # 显式设置为空时仅输出控制台；非空目录必须允许运行用户写入。
+  path: ${NACKET_LOG_PATH:/usr/local/logs/${application.name}}
+  color: false
+
+# 健康 HTTP 独立监听；管理动作默认关闭，开启时另需管理身份与真实对端范围。
+server:
+  enabled: true
+  host: 0.0.0.0
+  port: 3031
+  health: true
+  request_body_limit_bytes: 262144
+  max_inflight_requests: 32
+  request_deadline_ms: 2000
+
+# 原生 TCP、原生 WebSocket 与 Socket.IO 共用一个受管业务端口。
+ws:
+  enabled: true
+  addr: 0.0.0.0:3030
+  multiplex: true
+  auth_timeout_ms: 5000
+  heartbeat_timeout_ms: 60000
+  max_connections: 100000
+  max_unauthenticated: 4096
+
+config_watch:
+  enabled: true
+
+nacos:
+  enabled: false
+
+discovery:
+  enabled: false
+
+# 关闭的来源不创建连接、消费任务或健康探针。
+redis:
+  enabled: false
+kafka:
+  enabled: false
+
+grafana:
+  observability:
+    enabled: false
+    collectors:
+      enabled: true
+      interval_ms: 5000
+      filesystem_interval_ms: 30000
+      timeout_ms: 1000
+      stale_after_ms: 15000
+      process: true
+      cgroup: true
+      filesystems:
+        root: /
+      network_interfaces: {}
+      io_devices: {}
+
+nacket:
+  # 独立控制 INFO 会话日志；热更后影响后续事件，关闭不影响断连清理或业务回调。
+  connectionLogging:
+    connected: true
+    disconnected: true
+  # 独立只读积压采样默认关闭，启用后使用固定入口及有限请求预算。
+  brokerMetrics:
+    enabled: false
+    intervalMs: 5000
+    timeoutMs: 1000
+    staleAfterMs: 15000
+    maxInFlight: 4
+  # 名称目录在启动时固定；未列出的内部名称汇总到 _other，不生成新标签。
+  metricScopes:
+    enabled: false
+    routeIds: []
+    endpointRefs: []
+    ingressRefs: []
+  # 业务活跃与订阅目标采用有界分批采样；心跳不算业务活动。
+  sessionMetrics:
+    enabled: true
+    activityWindowMs: 60000
+    intervalMs: 100
+    batchSize: 128
+    maxTargets: 65536
+    maxTargetBytes: 16777216
+    maxCycleMs: 120000
+  transport:
+    # 固定默认 Runner 由 napp 管理；这些预算变更需要重启，不按路由或连接创建分区。
+    uidEvents:
+      partitions: 32
+      queueCapacity: 256
+      maxInflight: 8192
+      timeoutMs: 1000
+      maxPerUid: 128
+      maxBytesPerUid: 8388608
+      maxBytes: 268435456
+      controlReserve: 16
+    maxInboundBytes: 268435456
+    maxControlOutboundBytes: 8388608
+    # 节点硬上限由全部业务端口共享，路由的附加限额不能关闭它。
+    admission:
+      maxPhysicalConnections: 100000
+      maxUnauthenticated: 256
+      maxConnectionsPerPeer: 10000
+      connectionsPerSecondPerPeer: 1024
+      maxTrackedPeers: 16384
+  nodeId: socket-local
+  routeLedger: data/routes.json
+  # runtime 允许动态路由目录为空；required_routes 还要求 routeIds 中的全部路由当前可接流。
+  readiness:
+    policy: runtime
+  # 集群清单提案独立启用；关闭不会删除或恢复权威中已有的路由。
+  routeProvisioning:
+    enabled: false
+  # 空目录不提供可认证业务入口；上线必须提供身份端点与唯一序列化模式。
+  routes: []
+  endpoints: {}

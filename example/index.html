@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nacket SDK · 通用接入 / Connectivity</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 54rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.6;
+      }
+      form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+        padding: 0.5rem;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
+      }
+      output {
+        display: block;
+        padding: 0.75rem;
+        border: 1px solid #888;
+        border-radius: 0.5rem;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 24rem;
+        overflow: auto;
+      }
+      @media (max-width: 38rem) {
+        form {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Nacket SDK</h1>
+    <p>
+      业务 REST 授权后推送；客户端按需订阅。<br />Business REST authorizes publishing; clients
+      subscribe as needed.
+    </p>
+    <form id="connection">
+      <label
+        >承载 / Transport<select id="adapter">
+          <option value="native">WebSocket</option>
+          <option value="socketio">Socket.IO</option>
+        </select></label
+      >
+      <label
+        >地址 / URL<input id="url" value="wss://socket.example.com/nacket" required
+      /></label>
+      <label>路由 / Route<input id="route" value="route-a" required /></label>
+      <label>逻辑入口 / Endpoint<input id="endpoint" value="/route-a" required /></label>
+      <label>Socket.IO 路径 / Path<input id="path" value="/socket.io/" /></label>
+      <label>Token<input id="token" type="password" autocomplete="off" /></label>
+      <label>资源 / Resource<input id="group" value="resource-a" required /></label>
+      <label
+        >业务 REST / Business REST<input
+          id="rest"
+          type="url"
+          placeholder="https://api.example.com/resources/resource-a/events"
+      /></label>
+      <label>请求正文 / Request body<input id="body" value='{"value":"example"}' /></label>
+      <label>本地明文 / Local plaintext<input id="plaintext" type="checkbox" /></label>
+    </form>
+    <div class="actions">
+      <button id="connect">连接 / Connect</button>
+      <button id="disconnect">断开 / Disconnect</button>
+      <button id="sub" disabled>订阅 / Subscribe</button>
+      <button id="unsub" disabled>取消 / Unsubscribe</button>
+      <button id="notify" disabled>状态 / Status</button>
+      <button id="publish">REST 发送 / Publish via REST</button>
+      <button id="clear">清空记录 / Clear</button>
+    </div>
+    <output id="state" aria-live="polite">idle</output>
+    <p>只读路由 / Readonly route</p>
+    <output id="definition">—</output>
+    <p>已确认订阅 / Confirmed subscriptions</p>
+    <output id="subscriptions">[]</output>
+    <pre id="events" aria-live="polite"></pre>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,213 @@
+application:
+  name: "nacket"
+  mode: "service"
+  startup_timeout_ms: 45000
+  shutdown_timeout_ms: 15000
+log:
+  level: "${NACKET_LOG_LEVEL:info}"
+  path: "${NACKET_LOG_PATH:/usr/local/logs/${application.name}}"
+  color: false
+server:
+  enabled: true
+  host: "0.0.0.0"
+  port: 3031
+  health: true
+  request_body_limit_bytes: 262144
+  max_inflight_requests: 32
+  request_deadline_ms: 2000
+ws:
+  enabled: true
+  addr: "0.0.0.0:3030"
+  multiplex: true
+  auth_timeout_ms: 5000
+  heartbeat_timeout_ms: 60000
+config_watch:
+  enabled: true
+redis:
+  enabled: false
+nacos:
+  enabled: false
+discovery:
+  enabled: false
+grafana:
+  observability:
+    enabled: false
+nacket:
+  nodeId: "node-a"
+  clusterId: "cluster-a"
+  scopeEpoch: "1"
+  routeLedger: "data/routes.json"
+  readiness:
+    policy: "required_routes"
+    routeIds:
+      - "route-a"
+  routes:
+    -
+      routeId: "route-a"
+      revision: 1
+      enabled: true
+      serialization: "JSON_BYTES"
+      access:
+        listenerRef: "shared"
+        endpoint: "/route-a"
+        native:
+          enabled: true
+      identity:
+        mode: "remote_http"
+        endpointRef: "business"
+      originCheck:
+        allowMissing: false
+        allowedOrigins:
+          - "https://app.example.com"
+      servicePush:
+        enabled: true
+        ingressRef: "business"
+        allowedProducers:
+          - "service-a"
+      subscriptions:
+        enabled: true
+        authorization:
+          mode: "remote_http"
+          endpointRef: "business"
+      receiving:
+        direct:
+          enabled: false
+      schemas:
+        schema-a:
+          schemaId: "schema-a"
+          fields:
+            -
+              tag: 1
+              name: "value"
+              type:
+                kind: "string"
+              maxBytes: 65536
+      events:
+        event-a:
+          schema: "schema-a"
+          maxBytes: 65536
+      delivery:
+        mode: "realtime"
+  endpoints:
+    business:
+      target:
+        mode: "direct"
+        clientRef: "business"
+        url: "${NACKET_BUSINESS_URL:http://service-a:8080/socket/authorize}"
+      timeoutMs: 2000
+      maxResponseBytes: 32768
+      maxIdentityTtlMs: 300000
+      call:
+        method: "POST"
+        serviceTokenSecretRef: "NACKET_BUSINESS_TOKEN"
+        maxInFlight: 32
+  routeProvisioning:
+    enabled: true
+    sourceId: "config-owner"
+    generation: "1"
+    entries:
+      -
+        routeId: "route-a"
+        expectedRevision: "0"
+  brokerMetrics:
+    enabled: true
+  control:
+    mode: "kafka"
+    sourceRef: "control"
+    namespace: "nacket-cluster-a"
+    brokerClusterId: "${NACKET_KAFKA_CLUSTER_ID}"
+    commandTopic: "socket-control-commands"
+    stateTopic: "socket-control-state"
+    initialize: true
+    settings:
+      role: "combined"
+      nodeKeyId: "node-a"
+      provisionerKeyId: "config-owner"
+      permitTtlMs: 20000
+      renewIntervalMs: 2500
+      requestTimeoutMs: 6000
+      clockMarginMs: 100
+      writeBudgetMs: 500
+      expiryCompletion: false
+      minimumReadyNodes: 1
+      keys:
+        node-a:
+          secretRef: "NACKET_NODE_A_KEY"
+          principal:
+            role: "node"
+            nodeId: "node-a"
+        node-b:
+          secretRef: "NACKET_NODE_B_KEY"
+          principal:
+            role: "node"
+            nodeId: "node-b"
+        config-owner:
+          secretRef: "NACKET_CONFIG_KEY"
+          principal:
+            role: "administrator"
+            subject: "config-owner"
+            routes:
+              - "route-a"
+  ingresses:
+    business:
+      enabled: true
+      purpose: "push"
+      transport:
+        backend: "kafka"
+        sourceRef: "data"
+        topic: "socket-business"
+        partitionCount: 1
+      identity:
+        mode: "acl"
+        producer: "service-a"
+      delivery: "realtime"
+      dependencyStaleMs: 30000
+      maxMetadataBytes: 16384
+      maxBodyBytes: 65536
+      deadLetter: "socket-business.DLT"
+rest_clients:
+  business:
+    enabled: true
+    provider: "external"
+    timeout_ms: 3000
+kafkas:
+  control:
+    client_name: "control"
+    bootstrap_servers: "${NACKET_KAFKA_BOOTSTRAP:kafka:9092}"
+    consumer:
+      auto_offset_reset: "earliest"
+      properties:
+        -
+          name: "fetch.message.max.bytes"
+          value: "33554432"
+    producer:
+      properties:
+        -
+          name: "message.max.bytes"
+          value: "33554432"
+      lanes:
+        control:
+          acks: "all"
+          enable_idempotence: true
+    container:
+      consumers: "disabled"
+      readiness:
+        producer_probe_topic: "socket-control-commands"
+  data:
+    client_name: "data"
+    bootstrap_servers: "${NACKET_KAFKA_BOOTSTRAP:kafka:9092}"
+    consumer:
+      auto_offset_reset: "latest"
+      properties:
+        -
+          name: "isolation.level"
+          value: "read_committed"
+    behavior:
+      dead_letter_topic_suffix: ".DLT"
+      dead_letter_required: true
+      max_consume_attempts: 0
+      tombstone_policy: "dead_letter"
+      consume_retry_backoff_ms: 5
+      commit_interval_ms: 100
+    container:
+      consumers: "collected"
